@@ -1,0 +1,18 @@
+[package]
+name = "meeseeks_html5ever_nif"
+version = "0.1.0"
+authors = ["Meeseeks <mmischov@gmail.com>"]
+
+[lib]
+name = "meeseeks_html5ever_nif"
+path = "src/lib.rs"
+crate-type = ["dylib"]
+
+[dependencies]
+rustler = "^0.14"
+rustler_codegen = "^0.14"
+
+html5ever = "*"
+tendril = "*"
+lazy_static = "*"
+scoped-pool = "*"
