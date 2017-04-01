@@ -5,10 +5,15 @@ extern crate rustler_codegen;
 #[macro_use]
 extern crate lazy_static;
 extern crate html5ever;
+#[macro_use]
+extern crate html5ever_atoms;
 extern crate tendril;
 extern crate scoped_pool;
 
 use std::panic;
+
+mod flat_dom;
+use flat_dom::{FlatDom};
 
 use rustler::{
     NifEnv,
@@ -18,16 +23,15 @@ use rustler::{
     NifEncoder,
     NifDecoder,
 };
+
 use rustler::types::binary::NifBinary;
 use rustler::env::OwnedEnv;
 
-use html5ever::{ QualName };
-use html5ever::rcdom::{ RcDom, Handle, NodeEnum };
 use html5ever::driver::ParseOpts;
-use html5ever::tokenizer::TokenizerOpts;
+use html5ever::tokenizer::{TokenizerOpts};
 use html5ever::tree_builder::TreeBuilderOpts;
 use html5ever::tree_builder::interface::QuirksMode;
-use tendril::{ TendrilSink, StrTendril };
+use tendril::TendrilSink;
 
 mod atoms {
     rustler_atoms! {
@@ -106,69 +110,6 @@ fn term_to_configs(term: NifTerm) -> NifResult<ParseOpts> {
     }
 }
 
-// Zero-cost wrapper types which makes it possible to implement
-// NifEncoder for these externally defined types.
-// Unsure if this is a great way of doing it, but it's the way
-// that produced the cleanest and least noisy code.
-struct QNW<'a>(&'a QualName);
-struct STW<'a>(&'a StrTendril);
-
-impl<'b> NifEncoder for QNW<'b> {
-    fn encode<'a>(&self, env: NifEnv<'a>) -> NifTerm<'a> {
-        let data: &str = &*self.0.local;
-        data.encode(env)
-    }
-}
-impl<'b> NifEncoder for STW<'b> {
-    fn encode<'a>(&self, env: NifEnv<'a>) -> NifTerm<'a> {
-        let data: &str = &*self.0;
-        data.encode(env)
-    }
-}
-
-/// Takes a Handle from a RcDom, encodes it into a NifTerm.
-/// This follows the mochiweb encoding scheme with two exceptions:
-/// * A `{:doctype, name, pubid, sysid}` node.
-/// * Always returns a list as it's root node.
-fn handle_to_term<'a>(env: NifEnv<'a>, handle: &Handle) -> NifTerm<'a> {
-    let node = handle.borrow();
-
-    // Closure so that we don't encode this when we don't need to return
-    // it to the user.
-    let children = || {
-        // Encodes a Vec<Handle> to a Vec<NifTerm>
-        let res: Vec<NifTerm<'a>> =
-            node.children.iter().map(|h| handle_to_term(env, h)).collect();
-        // Encodes to erlang list term.
-        res.encode(env)
-    };
-
-    match node.node {
-        // Root document node. As far as I know, this is only located in the
-        // root of the DOM.
-        NodeEnum::Document =>
-            children(),
-
-        NodeEnum::Doctype(ref name, ref pubid, ref sysid) =>
-            (atoms::doctype(), STW(name), STW(pubid), STW(sysid)).encode(env),
-
-        NodeEnum::Text(ref text) =>
-            STW(text).encode(env),
-
-        NodeEnum::Comment(ref text) =>
-            (atoms::comment(), STW(text)).encode(env),
-
-        NodeEnum::Element(ref name, ref _elem_type, ref attributes) => {
-            let attribute_terms: Vec<NifTerm<'a>> =
-                attributes.iter()
-                .map(|a| (QNW(&a.name), STW(&a.value)).encode(env))
-                .collect();
-
-            (QNW(name), attribute_terms, children()).encode(env)
-        },
-    }
-}
-
 // Thread pool for `parse_async`.
 // TODO: How do we decide on pool size?
 lazy_static! {
@@ -197,14 +138,18 @@ fn parse_async<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'
                     Err(_) => panic!("argument is not a binary"),
                 };
 
-                let sink = RcDom::default();
+                let sink = FlatDom::default();
 
                 // TODO: Use Parser.from_bytes instead?
                 let parser = html5ever::parse_document(sink, Default::default());
                 let result = parser.one(
                     std::str::from_utf8(binary.as_slice()).unwrap());
 
-                let result_term = handle_to_term(inner_env, &result.document);
+                let result_term = result.encode(inner_env);
+
+                //let result_term = handle_to_term(inner_env, &index, &Parent::None, &result.document);
+
+
                 (atoms::html5ever_nif_result(), atoms::ok(), result_term)
                     .encode(inner_env)
             }) {
@@ -232,7 +177,7 @@ fn parse_async<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'
 
 fn parse_sync<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
     let binary: NifBinary = args[0].decode()?;
-    let sink = RcDom::default();
+    let sink = FlatDom::default();
 
     // TODO: Use Parser.from_bytes instead?
     let parser = html5ever::parse_document(sink, Default::default());
@@ -241,7 +186,7 @@ fn parse_sync<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a
 
     //std::thread::sleep(std::time::Duration::from_millis(10));
 
-    let result_term = handle_to_term(env, &result.document);
+    let result_term = result.encode(env);
 
     Ok((atoms::html5ever_nif_result(), atoms::ok(), result_term)
         .encode(env))
@@ -254,7 +199,6 @@ rustler_export_nifs!(
      ("parse_sync", 1, parse_sync)],
     Some(on_load)
 );
-
 
 fn on_load<'a>(_env: NifEnv<'a>, _load_info: NifTerm<'a>) -> bool {
     true

@@ -3,8 +3,8 @@ defmodule MeeseeksHtml5everTest do
   doctest MeeseeksHtml5ever
 
   test "parse basic html" do
-    html = "<html><head></head><body></body></html>"
-    ret = {:ok, [{"html", [], [{"head", [], []}, {"body", [], []}]}]}
+    html = "<html><head></head><body><random:div>Hi</div></body></html>"
+    ret = {:ok, [{"html", [], [{"head", [], []}, {"body", [], [{"random:div", [], []}]}]}]}
     assert MeeseeksHtml5ever.parse(html) == ret
   end
 
