@@ -1,6 +1,6 @@
 # Meeseeks_Html5ever
 
-Fork of [html5ever_elixir](https://github.com/hansihe/html5ever_elixir) that is more tightly coupled with [Meeseeks](https://github.com/mischov/meeseeks).
+A fork of Hansihe's [html5ever_elixir](https://github.com/hansihe/html5ever_elixir) that is more tightly coupled with [Meeseeks](https://github.com/mischov/meeseeks).
 
 ## Installation
 
@@ -8,7 +8,7 @@ The package can be installed by adding `meeseeks_html5ever` to your list of depe
 
 ```elixir
 def deps do
-  [{:meeseeks_html5ever, "~> 0.4.0"}]
+  [{:meeseeks_html5ever, "~> 0.4.0-rc"}]
 end
 ```
 

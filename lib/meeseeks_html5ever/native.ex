@@ -1,8 +1,12 @@
 defmodule NifNotLoadedError do
+  @moduledoc false
+
   defexception message: "nif not loaded"
 end
 
 defmodule MeeseeksHtml5ever.Native do
+  @moduledoc false
+
   use Rustler, otp_app: :meeseeks_html5ever, crate: "meeseeks_html5ever_nif"
 
   def parse_async(_binary), do: err()
