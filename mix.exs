@@ -1,4 +1,4 @@
-defmodule Html5ever.Mixfile do
+defmodule MeeseeksHtml5ever.Mixfile do
   use Mix.Project
 
   @version "0.4.2"
