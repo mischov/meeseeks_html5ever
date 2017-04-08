@@ -17,19 +17,36 @@ use rustler::{
     NifEnv,
     NifTerm,
     NifResult,
-    NifError,
     NifEncoder,
-    NifDecoder,
+    // For use with term_to_configs
+    //NifDecoder,
+    //NifError,
 };
 
 use rustler::types::binary::NifBinary;
 use rustler::env::OwnedEnv;
 
+use tendril::TendrilSink;
+
+// If using term_to_configs, remove this mod atoms and use commented
+
+mod atoms {
+    rustler_atoms! {
+        atom html5ever_nif_result;
+
+        atom ok;
+        atom error;
+        atom nif_panic;
+    }
+}
+
+// Not currently using term_to_configs
+/*
+
 use html5ever::driver::ParseOpts;
 use html5ever::tokenizer::{TokenizerOpts};
 use html5ever::tree_builder::TreeBuilderOpts;
 use html5ever::tree_builder::interface::QuirksMode;
-use tendril::TendrilSink;
 
 mod atoms {
     rustler_atoms! {
@@ -104,6 +121,7 @@ fn term_to_configs(term: NifTerm) -> NifResult<ParseOpts> {
         })
     }
 }
+*/
 
 // Thread pool for `parse_async`.
 // TODO: How do we decide on pool size?
@@ -178,8 +196,6 @@ fn parse_sync<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a
     let parser = html5ever::parse_document(sink, Default::default());
     let result = parser.one(
         std::str::from_utf8(binary.as_slice()).unwrap());
-
-    //std::thread::sleep(std::time::Duration::from_millis(10));
 
     let result_term = result.encode(env);
 
