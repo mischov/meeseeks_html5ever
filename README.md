@@ -8,7 +8,7 @@ The package can be installed by adding `meeseeks_html5ever` to your list of depe
 
 ```elixir
 def deps do
-  [{:meeseeks_html5ever, "~> 0.4.1"}]
+  [{:meeseeks_html5ever, "~> 0.4.2"}]
 end
 ```
 
