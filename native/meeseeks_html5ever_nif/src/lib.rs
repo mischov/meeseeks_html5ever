@@ -1,8 +1,6 @@
 #[macro_use]
 extern crate rustler;
 #[macro_use]
-extern crate rustler_codegen;
-#[macro_use]
 extern crate lazy_static;
 extern crate html5ever;
 #[macro_use]
@@ -41,9 +39,6 @@ mod atoms {
         atom error;
         atom nil;
         atom nif_panic;
-
-        atom doctype;
-        atom comment;
 
         atom error_level;
         atom discard_bom;

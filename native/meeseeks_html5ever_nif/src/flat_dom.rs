@@ -5,11 +5,9 @@ use std::default::Default;
 use html5ever::{ QualName };
 use html5ever::tokenizer::{Attribute};
 use html5ever::tree_builder::{TreeSink, QuirksMode, NodeOrText, AppendNode, AppendText};
-use html5ever::tree_builder;
 use tendril::StrTendril;
 
 use rustler::{NifEnv, NifTerm, NifEncoder};
-use rustler::types::atom::{ self, NifAtom };
 use rustler::types::elixir_struct::{ make_ex_struct};
 use rustler::types::map::{ map_new };
 
@@ -48,8 +46,8 @@ impl NodeEnum {
         match *self {
             Element(ref name, _) => {
                 match *name {
-                    qualname!(html, "script") => true,
-                    qualname!(html, "style") => true,
+                    qualname!(html, "script") | qualname!(html, "style") =>
+                        true,
                     _ => false,
                 }
             },
@@ -59,11 +57,7 @@ impl NodeEnum {
 
     fn append_text(&mut self, text: &str) -> bool {
         match *self {
-            Text(ref mut current) => {
-                current.push_slice(text);
-                true
-            },
-            Data(ref mut current) => {
+            Text(ref mut current) | Data(ref mut current) => {
                 current.push_slice(text);
                 true
             },
@@ -94,10 +88,6 @@ impl Node {
 
     fn index_of_child(&self, child: Id) -> Option<usize> {
         self.children.iter().position(|&x| x == child)
-    }
-
-    fn children_mut(&mut self) -> &mut Vec<Id> {
-        &mut self.children
     }
 }
 
@@ -147,7 +137,7 @@ impl FlatDom {
     }
 
     fn get_parent_and_index(&self, child: Id) -> (Id, usize) {
-        let ref maybe_parent = self.node(child).parent;
+        let maybe_parent = &self.node(child).parent;
         match *maybe_parent {
             Parent::None => panic!("expected parent found none"),
             Parent::Some(parent) => {
@@ -184,19 +174,19 @@ impl TreeSink for FlatDom {
     }
 
     // Not supported
-    fn parse_error(&mut self, msg: Cow<'static, str>) {}
+    fn parse_error(&mut self, _msg: Cow<'static, str>) {}
 
     fn get_document(&mut self) -> Self::Handle {
         Id(0)
     }
 
     // Not supported
-    fn get_template_contents(&mut self, target: Self::Handle) -> Self::Handle {
+    fn get_template_contents(&mut self, _target: Self::Handle) -> Self::Handle {
         panic!("Templates not supported");
     }
 
     // Not supported
-    fn set_quirks_mode(&mut self, mode: QuirksMode) {}
+    fn set_quirks_mode(&mut self, _mode: QuirksMode) {}
 
     fn same_node(&self, x: Self::Handle, y: Self::Handle) -> bool {
         x == y
@@ -288,14 +278,14 @@ impl TreeSink for FlatDom {
 
     fn reparent_children(&mut self, node: Self::Handle, new_parent: Self::Handle) {
         let children = self.node(node).children.clone();
-        for child in children.iter() {
+        for child in &children {
             self.remove_from_parent(*child);
             self.append_node(new_parent, *child);
         }
     }
 
     // Not supported
-    fn mark_script_already_started(&mut self, target: Self::Handle) {
+    fn mark_script_already_started(&mut self, _target: Self::Handle) {
         panic!("not supported")
     }
 }
@@ -373,7 +363,7 @@ impl NifEncoder for Parent {
 // Node
 
 fn split_ns_and_tag(ns_tag: &str) -> (&str, &str) {
-    let first_colon = ns_tag.find(':').unwrap_or(ns_tag.len());
+    let first_colon = ns_tag.find(':').unwrap_or_else(|| ns_tag.len());
     match ns_tag.split_at(first_colon) {
         (tag, "") => ("", tag),
         (ns, tag) => (ns, tag),
@@ -455,7 +445,7 @@ impl NifEncoder for FlatDom {
         let roots_atom = atoms::roots().encode(env);
         let nodes_atom = atoms::nodes().encode(env);
         let id_counter = self.nodes.len() - 1;
-        let ref roots = self.nodes[0].children;
+        let roots = &self.nodes[0].children;
         let nodes = map_new(env);
         let nodes_term = self.nodes.iter().skip(1).fold(nodes, |m, n|
                                                       m.map_put(n.id.encode(env), n.encode(env)).ok().unwrap());
