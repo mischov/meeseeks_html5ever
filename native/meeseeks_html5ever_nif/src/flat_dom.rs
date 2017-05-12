@@ -363,10 +363,11 @@ impl NifEncoder for Parent {
 // Node
 
 fn split_ns_and_tag(ns_tag: &str) -> (&str, &str) {
-    let first_colon = ns_tag.find(':').unwrap_or_else(|| ns_tag.len());
-    match ns_tag.split_at(first_colon) {
-        (tag, "") => ("", tag),
-        (ns, tag) => (ns, tag),
+    let v: Vec<&str> = ns_tag.splitn(2, ":").collect();
+    match v.len() {
+        1 => ("", v[0]),
+        2 => (v[0], v[1]),
+        _ => unreachable!(),
     }
 }
 

@@ -3,7 +3,7 @@ defmodule MeeseeksHtml5everTest do
   doctest MeeseeksHtml5ever
 
   test "parse div" do
-    html = "<div>Hello, World!</div>"
+    html = "<special:div>Hello, World!</div>"
     ret = {:ok,
            %{__struct__: :"Elixir.Meeseeks.Document",
              id_counter: 5,
@@ -33,7 +33,7 @@ defmodule MeeseeksHtml5everTest do
                       attributes: [],
                       children: [5],
                       id: 4,
-                      namespace: "",
+                      namespace: "special",
                       parent: 3,
                       tag: "div"},
                5 => %{__struct__: :"Elixir.Meeseeks.Document.Text",
