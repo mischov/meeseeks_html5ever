@@ -2,16 +2,17 @@ use std::borrow::Cow;
 use std::collections::HashSet;
 use std::default::Default;
 
-use html5ever::{ QualName };
-use html5ever::tokenizer::{Attribute};
-use html5ever::tree_builder::{TreeSink, QuirksMode, NodeOrText, AppendNode, AppendText};
+use html5ever::{ QualName, Attribute };
+use html5ever::tree_builder::{TreeSink, QuirksMode, NodeOrText, ElementFlags};
+use markup5ever::ExpandedName;
+
 use tendril::StrTendril;
 
 use rustler::{NifEnv, NifTerm, NifEncoder};
 use rustler::types::elixir_struct::{ make_ex_struct};
 use rustler::types::map::{ map_new };
 
-use self::NodeEnum::{Comment, Data, Doctype, Document, Element, Text};
+use self::NodeEnum::{Comment, Data, Doctype, Document, Element, ProcessingInstruction, Text};
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub struct Id(usize);
@@ -38,15 +39,17 @@ enum NodeEnum {
     Doctype(StrTendril, StrTendril, StrTendril),
     Document,
     Element(QualName, Vec<Attribute>),
+    ProcessingInstruction(StrTendril, StrTendril),
     Text(StrTendril),
 }
 
 impl NodeEnum {
     fn script_or_style(&self) -> bool {
         match *self {
-            Element(ref name, _) => {
-                match *name {
-                    qualname!(html, "script") | qualname!(html, "style") =>
+            Element(ref name, ..) => {
+                match name.expanded() {
+                    expanded_name!(html "script") |
+                    expanded_name!(html "style") =>
                         true,
                     _ => false,
                 }
@@ -181,26 +184,26 @@ impl TreeSink for FlatDom {
     }
 
     // Not supported
-    fn get_template_contents(&mut self, _target: Self::Handle) -> Self::Handle {
+    fn get_template_contents(&mut self, _target: &Self::Handle) -> Self::Handle {
         panic!("Templates not supported");
     }
 
     // Not supported
     fn set_quirks_mode(&mut self, _mode: QuirksMode) {}
 
-    fn same_node(&self, x: Self::Handle, y: Self::Handle) -> bool {
+    fn same_node(&self, x: &Self::Handle, y: &Self::Handle) -> bool {
         x == y
     }
 
-    fn elem_name(&self, target: Self::Handle) -> QualName {
-        if let Element(ref name, _) = self.node(target).node {
-            name.clone()
+    fn elem_name(&self, target: &Self::Handle) -> ExpandedName {
+        if let Element(ref name, ..) = self.node(*target).node {
+            name.expanded()
         } else {
             panic!("not an element!")
         }
     }
 
-    fn create_element(&mut self, name: QualName, attrs: Vec<Attribute>) -> Self::Handle {
+    fn create_element(&mut self, name: QualName, attrs: Vec<Attribute>, _flags: ElementFlags) -> Self::Handle {
         self.add_node(Element(name, attrs))
     }
 
@@ -208,29 +211,33 @@ impl TreeSink for FlatDom {
         self.add_node(Comment(text))
     }
 
-    fn has_parent_node(&self, node: Self::Handle) -> bool {
-        match self.node(node).parent {
+    fn create_pi(&mut self, target: StrTendril, data: StrTendril) -> Self::Handle {
+        self.add_node(ProcessingInstruction(target, data))
+    }
+
+    fn has_parent_node(&self, node: &Self::Handle) -> bool {
+        match self.node(*node).parent {
             Parent::None => false,
             _ => true,
         }
     }
 
-    fn append(&mut self, parent: Self::Handle, child: NodeOrText<Self::Handle>) {
+    fn append(&mut self, parent: &Self::Handle, child: NodeOrText<Self::Handle>) {
         match child {
-            AppendNode(node) => self.append_node(parent, node),
-            AppendText(text) => self.append_text(parent, text),
+            NodeOrText::AppendNode(node) => self.append_node(*parent, node),
+            NodeOrText::AppendText(text) => self.append_text(*parent, text),
         };
     }
 
-    fn append_before_sibling(&mut self, sibling: Self::Handle, child: NodeOrText<Self::Handle>) {
-        let (parent, i) = self.get_parent_and_index(sibling);
+    fn append_before_sibling(&mut self, sibling: &Self::Handle, child: NodeOrText<Self::Handle>) {
+        let (parent, i) = self.get_parent_and_index(*sibling);
 
         let child = match (child, i) {
             // No previous node
-            (AppendText(text), 0) => self.add_node(Text(text)),
+            (NodeOrText::AppendText(text), 0) => self.add_node(Text(text)),
 
             // Check for text node before insertion point, append if there is
-            (AppendText(text), i) => {
+            (NodeOrText::AppendText(text), i) => {
                 let prev = self.node(parent).children[i-1];
                 if self.node_mut(prev).node.append_text(&text) {
                     return;
@@ -241,7 +248,7 @@ impl TreeSink for FlatDom {
             // Tree builder promises no text no *after* insertion point
 
             // Any other kind of node
-            (AppendNode(node), _) => node,
+            (NodeOrText::AppendNode(node), _) => node,
         };
 
         if self.node(child).parent.is_some() {
@@ -257,9 +264,9 @@ impl TreeSink for FlatDom {
         self.append_node(Id(0), doctype);
     }
 
-    fn add_attrs_if_missing(&mut self, target: Self::Handle, attrs: Vec<Attribute>) {
-        let target_node = self.node_mut(target);
-        let target_attrs = if let Element(_, ref mut attrs) = target_node.node {
+    fn add_attrs_if_missing(&mut self, target: &Self::Handle, attrs: Vec<Attribute>) {
+        let target_node = self.node_mut(*target);
+        let target_attrs = if let Element(_, ref mut attrs, ..) = target_node.node {
             attrs
         } else {
             panic!("not an element")
@@ -272,20 +279,20 @@ impl TreeSink for FlatDom {
         }));
     }
 
-    fn remove_from_parent(&mut self, target: Self::Handle) {
-        self.remove_from_parent(target);
+    fn remove_from_parent(&mut self, target: &Self::Handle) {
+        self.remove_from_parent(*target);
     }
 
-    fn reparent_children(&mut self, node: Self::Handle, new_parent: Self::Handle) {
-        let children = self.node(node).children.clone();
+    fn reparent_children(&mut self, node: &Self::Handle, new_parent: &Self::Handle) {
+        let children = self.node(*node).children.clone();
         for child in &children {
             self.remove_from_parent(*child);
-            self.append_node(new_parent, *child);
+            self.append_node(*new_parent, *child);
         }
     }
 
     // Not supported
-    fn mark_script_already_started(&mut self, _target: Self::Handle) {
+    fn mark_script_already_started(&mut self, _target: &Self::Handle) {
         panic!("not supported")
     }
 }
@@ -306,6 +313,8 @@ mod atoms {
         atom tag;
         atom attributes;
         atom children;
+        atom target;
+        atom data;
 
         atom id_counter;
         atom roots;
@@ -424,6 +433,16 @@ impl NifEncoder for Node {
                     .map_put(tag_atom, tag.encode(env)).ok().unwrap()
                     .map_put(attributes_atom, attribute_terms.encode(env)).ok().unwrap()
                     .map_put(children_atom, self.children.encode(env)).ok().unwrap()
+            },
+
+            ProcessingInstruction(ref target, ref data) => {
+                let target_atom = atoms::target().encode(env);
+                let data_atom = atoms::data().encode(env);
+                make_ex_struct(env, "Elixir.Meeseeks.Document.ProcessingInstruction").ok().unwrap()
+                    .map_put(parent_atom, self.parent.encode(env)).ok().unwrap()
+                    .map_put(id_atom, self.id.encode(env)).ok().unwrap()
+                    .map_put(target_atom, STW(target).encode(env)).ok().unwrap()
+                    .map_put(data_atom, STW(data).encode(env)).ok().unwrap()
             },
 
             Text(ref content) => {

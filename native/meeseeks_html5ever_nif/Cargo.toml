@@ -11,8 +11,8 @@ crate-type = ["dylib"]
 [dependencies]
 rustler = "^0.14"
 
-html5ever = "0.15.0"
-html5ever-atoms = "0.3.0"
+html5ever = "0.16.0"
+markup5ever = "0.1"
 tendril = "0.2.3"
-lazy_static = "*"
+lazy_static = "0.2"
 scoped-pool = "1.0.0"
