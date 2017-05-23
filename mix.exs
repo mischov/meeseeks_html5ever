@@ -1,7 +1,7 @@
 defmodule MeeseeksHtml5ever.Mixfile do
   use Mix.Project
 
-  @version "0.4.6"
+  @version "0.5.0"
 
   def project do
     [app: :meeseeks_html5ever,
