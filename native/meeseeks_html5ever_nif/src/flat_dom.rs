@@ -379,6 +379,24 @@ fn split_ns_and_tag(ns_tag: &str) -> (&str, &str) {
     }
 }
 
+fn ns_and_tag(name: &QualName) -> (&str, &str) {
+    match name.prefix {
+        // When parsing with xml5ever, the prefix in `prefix:tag` ends up
+        // in the prefix.
+        Some(ref prefix) => {
+            let ns: &str = prefix;
+            let tag: &str = &name.local;
+            (ns, tag)
+        },
+        // When parsing with html5ever, the prefix in `prefix:tag` ends up
+        // in the local name and needs to be split out.
+        None => {
+            let ns_tag: &str = &name.local;
+            split_ns_and_tag(ns_tag)
+        },
+    }
+}
+
 impl NifEncoder for Node {
     fn encode<'a>(&self, env: NifEnv<'a>) -> NifTerm<'a> {
         let parent_atom = atoms::parent().encode(env);
@@ -420,8 +438,7 @@ impl NifEncoder for Node {
                 let tag_atom = atoms::tag().encode(env);
                 let attributes_atom = atoms::attributes().encode(env);
                 let children_atom = atoms::children().encode(env);
-                let ns_tag: &str = &name.local;
-                let (namespace, tag) = split_ns_and_tag(ns_tag);
+                let (namespace, tag) = ns_and_tag(&name);
                 let attribute_terms: Vec<NifTerm<'a>> =
                     attributes.iter()
                     .map(|a| (QNW(&a.name), STW(&a.value)).encode(env))

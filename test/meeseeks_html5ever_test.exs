@@ -3,7 +3,7 @@ defmodule MeeseeksHtml5everTest do
   doctest MeeseeksHtml5ever
 
   test "parse div" do
-    html = "<special:div>Hello, World!</div>"
+    html = "<special:div>Hello, World!</special:div>"
     ret = {:ok,
            %{__struct__: :"Elixir.Meeseeks.Document",
              id_counter: 5,
@@ -41,7 +41,7 @@ defmodule MeeseeksHtml5everTest do
                       id: 5,
                       parent: 4}},
              roots: [1]}}
-    assert MeeseeksHtml5ever.parse(html) == ret
+    assert MeeseeksHtml5ever.parse_html(html) == ret
   end
 
   test "parse simple document" do
@@ -82,16 +82,37 @@ defmodule MeeseeksHtml5everTest do
                       content: "Hello, World!",
                       id: 5, parent: 4}},
              roots: [1]}}
-    assert MeeseeksHtml5ever.parse(html) == ret
+    assert MeeseeksHtml5ever.parse_html(html) == ret
   end
 
   test "parse example" do
     html = File.read!("test/data/example.html")
-    assert match?({:ok, _}, MeeseeksHtml5ever.parse(html))
+    assert match?({:ok, _}, MeeseeksHtml5ever.parse_html(html))
   end
 
   test "parse unbalanced worst case" do
     html = String.duplicate("<div>", 100)
-    assert match?({:ok, _}, MeeseeksHtml5ever.parse(html))
+    assert match?({:ok, _}, MeeseeksHtml5ever.parse_html(html))
+  end
+
+  test "parse xml" do
+    xml = "<special:greeting>Hello, World!</special:greeting>"
+    ret = {:ok,
+           %{__struct__: Meeseeks.Document,
+             id_counter: 2,
+             nodes: %{
+               1 => %{__struct__: Meeseeks.Document.Element,
+                      attributes: [],
+                      children: [2],
+                      id: 1,
+                      namespace: "special",
+                      parent: nil,
+                      tag: "greeting"},
+               2 => %{__struct__: Meeseeks.Document.Text,
+                      content: "Hello, World!",
+                      id: 2,
+                      parent: 1}},
+             roots: [1]}}
+    assert MeeseeksHtml5ever.parse_xml(xml) == ret
   end
 end
