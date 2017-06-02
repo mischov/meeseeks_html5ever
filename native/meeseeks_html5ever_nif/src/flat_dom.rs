@@ -33,9 +33,23 @@ impl Parent {
 }
 
 #[derive(Debug)]
+enum ScriptOrStyle {
+    Script,
+    Style,
+    Neither,
+}
+
+#[derive(Debug)]
+enum DataType {
+    Script,
+    Style,
+    Cdata,
+}
+
+#[derive(Debug)]
 enum NodeEnum {
     Comment(StrTendril),
-    Data(StrTendril),
+    Data(DataType, StrTendril),
     Doctype(StrTendril, StrTendril, StrTendril),
     Document,
     Element(QualName, Vec<Attribute>),
@@ -44,23 +58,22 @@ enum NodeEnum {
 }
 
 impl NodeEnum {
-    fn script_or_style(&self) -> bool {
+    fn script_or_style(&self) -> ScriptOrStyle {
         match *self {
             Element(ref name, ..) => {
                 match name.expanded() {
-                    expanded_name!(html "script") |
-                    expanded_name!(html "style") =>
-                        true,
-                    _ => false,
+                    expanded_name!(html "script") => ScriptOrStyle::Script,
+                    expanded_name!(html "style") => ScriptOrStyle::Style,
+                    _ => ScriptOrStyle::Neither,
                 }
             },
-            _ => false,
+            _ => ScriptOrStyle::Neither,
         }
     }
 
     fn append_text(&mut self, text: &str) -> bool {
         match *self {
-            Text(ref mut current) | Data(ref mut current) => {
+            Text(ref mut current) | Data(_, ref mut current) => {
                 current.push_slice(text);
                 true
             },
@@ -128,9 +141,13 @@ impl FlatDom {
                 _ => unreachable!(),
             };
         } else {
-            let child = if self.node(parent).node.script_or_style() {
-                self.add_node(Data(text))} else {
-                self.add_node(Text(text))
+            let child = match self.node(parent).node.script_or_style() {
+                ScriptOrStyle::Script =>
+                    self.add_node(Data(DataType::Script, text)),
+                ScriptOrStyle::Style =>
+                    self.add_node(Data(DataType::Style, text)),
+                ScriptOrStyle::Neither =>
+                    self.add_node(Text(text)),
             };
             self.node_mut(child).parent = Parent::Some(parent);
             let parent_node = self.node_mut(parent);
@@ -208,7 +225,12 @@ impl TreeSink for FlatDom {
     }
 
     fn create_comment(&mut self, text: StrTendril) -> Self::Handle {
-        self.add_node(Comment(text))
+        if text.starts_with("[CDATA[") && text.ends_with("]]") {
+            let data = StrTendril::from_slice(&text[7..(text.len() - 2)]);
+            self.add_node(Data(DataType::Cdata, data))
+        } else {
+            self.add_node(Comment(text))
+        }
     }
 
     fn create_pi(&mut self, target: StrTendril, data: StrTendril) -> Self::Handle {
@@ -316,6 +338,11 @@ mod atoms {
         atom target;
         atom data;
 
+        atom type_ = "type";
+        atom script;
+        atom style;
+        atom cdata;
+
         atom id_counter;
         atom roots;
         atom nodes;
@@ -369,6 +396,18 @@ impl NifEncoder for Parent {
     }
 }
 
+// DataType
+
+impl NifEncoder for DataType {
+    fn encode<'a>(&self, env: NifEnv<'a>) -> NifTerm<'a> {
+        match *self {
+            DataType::Script => atoms::script().encode(env),
+            DataType::Style => atoms::style().encode(env),
+            DataType::Cdata => atoms::cdata().encode(env),
+        }
+    }
+}
+
 // Node
 
 fn split_ns_and_tag(ns_tag: &str) -> (&str, &str) {
@@ -411,11 +450,13 @@ impl NifEncoder for Node {
                     .map_put(content_atom, STW(content).encode(env)).ok().unwrap()
             },
 
-            Data(ref content) => {
+            Data(ref data_type, ref content) => {
+                let type_atom = atoms::type_().encode(env);
                 let content_atom = atoms::content().encode(env);
                 make_ex_struct(env, "Elixir.Meeseeks.Document.Data").ok().unwrap()
                     .map_put(parent_atom, self.parent.encode(env)).ok().unwrap()
                     .map_put(id_atom, self.id.encode(env)).ok().unwrap()
+                    .map_put(type_atom, data_type.encode(env)).ok().unwrap()
                     .map_put(content_atom, STW(content).encode(env)).ok().unwrap()
             },
 
