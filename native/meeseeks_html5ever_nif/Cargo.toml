@@ -1,6 +1,6 @@
 [package]
 name = "meeseeks_html5ever_nif"
-version = "0.6.0"
+version = "0.6.1"
 authors = ["Meeseeks <mmischov@gmail.com>"]
 
 [lib]
