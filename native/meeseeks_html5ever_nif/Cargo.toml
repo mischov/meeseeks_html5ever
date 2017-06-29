@@ -9,7 +9,7 @@ path = "src/lib.rs"
 crate-type = ["dylib"]
 
 [dependencies]
-rustler = "^0.14"
+rustler = "^0.15.1"
 
 html5ever = "0.16.0"
 xml5ever = "0.6.0"
