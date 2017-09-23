@@ -95,6 +95,11 @@ defmodule MeeseeksHtml5everTest do
     assert match?({:ok, _}, MeeseeksHtml5ever.parse_html(html))
   end
 
+  test "parse requiring remove_from_parent" do
+    html = File.read!("test/data/remove_from_parent.html")
+    assert match?({:ok, _}, MeeseeksHtml5ever.parse_html(html))
+  end
+
   test "parse xml" do
     xml = "<special:greeting>Hello, World!</special:greeting>"
     ret = {:ok,

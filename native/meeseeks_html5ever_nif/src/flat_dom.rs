@@ -156,13 +156,13 @@ impl FlatDom {
         }
     }
 
-    fn get_parent_and_index(&self, child: Id) -> (Id, usize) {
+    fn get_parent_and_index(&self, child: Id) -> Option<(Id, usize)> {
         let maybe_parent = &self.node(child).parent;
         match *maybe_parent {
-            Parent::None => panic!("expected parent found none"),
+            Parent::None => None,
             Parent::Some(parent) => {
                 match self.node(parent).index_of_child(child) {
-                    Some(i) => (parent, i),
+                    Some(i) => Some((parent, i)),
                     None => panic!("have parent but not in parent"),
                 }
             }
@@ -170,10 +170,11 @@ impl FlatDom {
     }
 
     fn remove_from_parent(&mut self, child: Id) {
-        let (parent, i) = self.get_parent_and_index(child);
-        self.node_mut(parent).children.remove(i);
-        let child = self.node_mut(child);
-        child.parent = Parent::None;
+        if let Some((parent, i)) = self.get_parent_and_index(child) {
+            self.node_mut(parent).children.remove(i);
+            let child = self.node_mut(child);
+            child.parent = Parent::None;
+        }
     }
 }
 
@@ -252,7 +253,8 @@ impl TreeSink for FlatDom {
     }
 
     fn append_before_sibling(&mut self, sibling: &Self::Handle, child: NodeOrText<Self::Handle>) {
-        let (parent, i) = self.get_parent_and_index(*sibling);
+        let (parent, i) = self.get_parent_and_index(*sibling)
+            .expect("append_before_sibling called on node without parent");
 
         let child = match (child, i) {
             // No previous node
