@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.7.0 (2017-09-23)
+
+### Fixes
+
+  * Modify `get_parent_and_index` so that an absent parent doesn't make it panic
+
 ## v0.6.1 (2017-06-29)
 
 ### Fixes
