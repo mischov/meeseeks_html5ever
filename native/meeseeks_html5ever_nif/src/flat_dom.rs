@@ -314,11 +314,6 @@ impl TreeSink for FlatDom {
             self.append_node(*new_parent, *child);
         }
     }
-
-    // Not supported
-    fn mark_script_already_started(&mut self, _target: &Self::Handle) {
-        panic!("not supported")
-    }
 }
 
 // NIF Encoding
