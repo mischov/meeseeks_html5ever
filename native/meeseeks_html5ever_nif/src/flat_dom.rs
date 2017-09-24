@@ -52,7 +52,7 @@ enum NodeEnum {
     Data(DataType, StrTendril),
     Doctype(StrTendril, StrTendril, StrTendril),
     Document,
-    Element(QualName, Vec<Attribute>),
+    Element(QualName, Vec<Attribute>, bool),
     ProcessingInstruction(StrTendril, StrTendril),
     Text(StrTendril),
 }
@@ -201,9 +201,13 @@ impl TreeSink for FlatDom {
         Id(0)
     }
 
-    // Not supported
-    fn get_template_contents(&mut self, _target: &Self::Handle) -> Self::Handle {
-        panic!("Templates not supported");
+    fn get_template_contents(&mut self, target: &Self::Handle) -> Self::Handle {
+        if let Element(_, _, true) = self.node(*target).node {
+           // Use template element as document fragment
+           target.clone()
+        } else {
+            panic!("not a template element!")
+        }
     }
 
     // Not supported
@@ -221,8 +225,8 @@ impl TreeSink for FlatDom {
         }
     }
 
-    fn create_element(&mut self, name: QualName, attrs: Vec<Attribute>, _flags: ElementFlags) -> Self::Handle {
-        self.add_node(Element(name, attrs))
+    fn create_element(&mut self, name: QualName, attrs: Vec<Attribute>, flags: ElementFlags) -> Self::Handle {
+        self.add_node(Element(name, attrs, flags.template))
     }
 
     fn create_comment(&mut self, text: StrTendril) -> Self::Handle {
@@ -479,7 +483,7 @@ impl NifEncoder for Node {
 
             Document => unreachable!(),
 
-            Element(ref name, ref attributes) => {
+            Element(ref name, ref attributes, ref _template) => {
                 let namespace_atom = atoms::namespace().encode(env);
                 let tag_atom = atoms::tag().encode(env);
                 let attributes_atom = atoms::attributes().encode(env);

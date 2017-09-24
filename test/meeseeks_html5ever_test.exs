@@ -100,6 +100,11 @@ defmodule MeeseeksHtml5everTest do
     assert match?({:ok, _}, MeeseeksHtml5ever.parse_html(html))
   end
 
+  test "parse template element" do
+    html = File.read!("test/data/template.html")
+    assert match?({:ok, _}, MeeseeksHtml5ever.parse_html(html))
+  end
+
   test "parse xml" do
     xml = "<special:greeting>Hello, World!</special:greeting>"
     ret = {:ok,
