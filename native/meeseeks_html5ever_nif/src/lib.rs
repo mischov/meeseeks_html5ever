@@ -135,7 +135,7 @@ lazy_static! {
     static ref POOL: scoped_pool::Pool = scoped_pool::Pool::new(4);
 }
 
-fn parse_async<'a>(parser_type: ParserType, env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
+fn parse<'a>(parser_type: ParserType, env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
     let mut owned_env = OwnedEnv::new();
 
     // Copies the term into the inner env. Since this term is normally a large
@@ -206,53 +206,18 @@ fn parse_async<'a>(parser_type: ParserType, env: NifEnv<'a>, args: &[NifTerm<'a>
     Ok(atoms::ok().encode(env))
 }
 
-fn parse_html_async<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
-    parse_async(ParserType::HtmlDocument, env, args)
+fn parse_html<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
+    parse(ParserType::HtmlDocument, env, args)
 }
 
-fn parse_xml_async<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
-    parse_async(ParserType::XmlDocument, env, args)
-}
-
-fn parse_sync<'a>(parser_type: ParserType, env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
-    let binary: NifBinary = args[0].decode()?;
-    let sink = FlatDom::default();
-
-    let result = match parser_type {
-        ParserType::HtmlDocument => {
-            // TODO: Use Parser.from_bytes instead?
-            let parser = html5ever::parse_document(sink, Default::default());
-            parser.one(std::str::from_utf8(binary.as_slice()).unwrap())
-        },
-
-        ParserType::XmlDocument => {
-            // TODO: Use Parser.from_bytes instead?
-            let parser = xml5ever::driver::parse_document(sink, Default::default());
-            parser.one(std::str::from_utf8(binary.as_slice()).unwrap())
-        },
-    };
-
-    let result_term = result.encode(env);
-
-    Ok((atoms::html5ever_nif_result(), atoms::ok(), result_term)
-        .encode(env))
-
-}
-
-fn parse_html_sync<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
-    parse_sync(ParserType::HtmlDocument, env, args)
-}
-
-fn parse_xml_sync<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
-    parse_sync(ParserType::XmlDocument, env, args)
+fn parse_xml<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
+    parse(ParserType::XmlDocument, env, args)
 }
 
 rustler_export_nifs!(
     "Elixir.MeeseeksHtml5ever.Native",
-    [("parse_html_async", 1, parse_html_async),
-     ("parse_html_sync", 1, parse_html_sync),
-     ("parse_xml_async", 1, parse_xml_async),
-     ("parse_xml_sync", 1, parse_xml_sync),
+    [("parse_html", 1, parse_html),
+     ("parse_xml", 1, parse_xml),
     ],
     Some(on_load)
 );
