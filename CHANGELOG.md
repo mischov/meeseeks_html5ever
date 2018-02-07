@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.8.1 (2018-02-07)
+
+### Fixes
+
+  * Update to `rustler v0.16/0.16`, which works with OTP 20.2
+
 ## v0.8.0 (2017-09-24)
 
 ### Enhancements
