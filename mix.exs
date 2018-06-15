@@ -1,7 +1,7 @@
 defmodule MeeseeksHtml5ever.Mixfile do
   use Mix.Project
 
-  @version "0.8.1"
+  @version "0.9.0"
 
   def project do
     [
@@ -59,10 +59,7 @@ defmodule MeeseeksHtml5ever.Mixfile do
       maintainers: ["Mischov"],
       licenses: ["MIT", "Apache-2.0"],
       files: ["lib", "native", "mix.exs", "README.md", "LICENSE-MIT", "LICENSE-APACHE"],
-      links: %{
-        "GitHub" => "https://github.com/mischov/meeseeks_html5ever",
-        "Docs" => "https://hexdocs.pm/meeseeks_html5ever"
-      }
+      links: %{"GitHub" => "https://github.com/mischov/meeseeks_html5ever"}
     ]
   end
 end

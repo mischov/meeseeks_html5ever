@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.9.0 (2018-06-15)
+
+### Enhancements
+
+  * Add .formatters.exs and mix format project
+
+### Fixes
+
+  * Fix Dialyzer-related nif stub error
+
 ## v0.8.1 (2018-02-07)
 
 ### Fixes
