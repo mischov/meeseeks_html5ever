@@ -14,6 +14,6 @@ defmodule MeeseeksHtml5ever.Native do
   def parse_xml(_binary), do: err()
 
   defp err() do
-    throw NifNotLoadedError
+    :erlang.nif_error(%NifNotLoadedError{})
   end
 end
