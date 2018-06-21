@@ -40,10 +40,10 @@ defmodule MeeseeksHtml5ever.Mixfile do
 
   defp deps do
     [
-      {:rustler, "~> 0.16"},
+      {:rustler, "~> 0.17.0"},
 
       # docs
-      {:ex_doc, "~> 0.14", only: :docs},
+      {:ex_doc, "~> 0.14.0", only: :docs},
       {:markdown, github: "devinus/markdown", only: :docs}
     ]
   end

@@ -8,7 +8,7 @@ use markup5ever::ExpandedName;
 
 use tendril::StrTendril;
 
-use rustler::{NifEnv, NifTerm, NifEncoder};
+use rustler::{Env, Term, Encoder};
 use rustler::types::elixir_struct::{ make_ex_struct};
 use rustler::types::map::{ map_new };
 
@@ -361,14 +361,14 @@ mod atoms {
 // QualName and StrTendril
 
 // Zero-cost wrapper types which makes it possible to implement
-// NifEncoder for these externally defined types.
+// Encoder for these externally defined types.
 // Unsure if this is a great way of doing it, but it's the way
 // that produced the cleanest and least noisy code.
 
 struct QNW<'a>(&'a QualName);
 
-impl<'b> NifEncoder for QNW<'b> {
-    fn encode<'a>(&self, env: NifEnv<'a>) -> NifTerm<'a> {
+impl<'b> Encoder for QNW<'b> {
+    fn encode<'a>(&self, env: Env<'a>) -> Term<'a> {
         let local: &str = &*self.0.local;
         local.encode(env)
     }
@@ -376,8 +376,8 @@ impl<'b> NifEncoder for QNW<'b> {
 
 struct STW<'a>(&'a StrTendril);
 
-impl<'b> NifEncoder for STW<'b> {
-    fn encode<'a>(&self, env: NifEnv<'a>) -> NifTerm<'a> {
+impl<'b> Encoder for STW<'b> {
+    fn encode<'a>(&self, env: Env<'a>) -> Term<'a> {
         let data: &str = &*self.0;
         data.encode(env)
     }
@@ -385,16 +385,16 @@ impl<'b> NifEncoder for STW<'b> {
 
 // Id
 
-impl NifEncoder for Id {
-    fn encode<'a>(&self, env: NifEnv<'a>) -> NifTerm<'a> {
+impl Encoder for Id {
+    fn encode<'a>(&self, env: Env<'a>) -> Term<'a> {
         self.0.encode(env)
     }
 }
 
 // Parent
 
-impl NifEncoder for Parent {
-    fn encode<'a>(&self, env: NifEnv<'a>) -> NifTerm<'a> {
+impl Encoder for Parent {
+    fn encode<'a>(&self, env: Env<'a>) -> Term<'a> {
         match *self {
             Parent::None => atoms::nil().encode(env),
             Parent::Some(id) => if id == Id(0) {
@@ -407,8 +407,8 @@ impl NifEncoder for Parent {
 
 // DataType
 
-impl NifEncoder for DataType {
-    fn encode<'a>(&self, env: NifEnv<'a>) -> NifTerm<'a> {
+impl Encoder for DataType {
+    fn encode<'a>(&self, env: Env<'a>) -> Term<'a> {
         match *self {
             DataType::Script => atoms::script().encode(env),
             DataType::Style => atoms::style().encode(env),
@@ -445,8 +445,8 @@ fn ns_and_tag(name: &QualName) -> (&str, &str) {
     }
 }
 
-impl NifEncoder for Node {
-    fn encode<'a>(&self, env: NifEnv<'a>) -> NifTerm<'a> {
+impl Encoder for Node {
+    fn encode<'a>(&self, env: Env<'a>) -> Term<'a> {
         let parent_atom = atoms::parent().encode(env);
         let id_atom = atoms::id().encode(env);
 
@@ -489,7 +489,7 @@ impl NifEncoder for Node {
                 let attributes_atom = atoms::attributes().encode(env);
                 let children_atom = atoms::children().encode(env);
                 let (namespace, tag) = ns_and_tag(&name);
-                let attribute_terms: Vec<NifTerm<'a>> =
+                let attribute_terms: Vec<Term<'a>> =
                     attributes.iter()
                     .map(|a| (QNW(&a.name), STW(&a.value)).encode(env))
                     .collect();
@@ -525,8 +525,8 @@ impl NifEncoder for Node {
 
 // FlatDom
 
-impl NifEncoder for FlatDom {
-    fn encode<'a>(&self, env: NifEnv<'a>) -> NifTerm<'a> {
+impl Encoder for FlatDom {
+    fn encode<'a>(&self, env: Env<'a>) -> Term<'a> {
         let id_counter_atom = atoms::id_counter().encode(env);
         let roots_atom = atoms::roots().encode(env);
         let nodes_atom = atoms::nodes().encode(env);

@@ -15,16 +15,16 @@ mod flat_dom;
 use flat_dom::{FlatDom};
 
 use rustler::{
-    NifEnv,
-    NifTerm,
+    Env,
+    Term,
     NifResult,
-    NifEncoder,
+    Encoder,
     // For use with term_to_configs
-    //NifDecoder,
-    //NifError,
+    //Decoder,
+    //Error,
 };
 
-use rustler::types::binary::NifBinary;
+use rustler::types::binary::Binary;
 use rustler::env::OwnedEnv;
 
 use tendril::TendrilSink;
@@ -76,16 +76,16 @@ enum ErrorLevel {
     Some,
     All,
 }
-impl<'a> NifDecoder<'a> for ErrorLevel {
-    fn decode(term: NifTerm<'a>) -> NifResult<ErrorLevel> {
+impl<'a> Decoder<'a> for ErrorLevel {
+    fn decode(term: Term<'a>) -> NifResult<ErrorLevel> {
         if atoms::none() == term { Ok(ErrorLevel::None) }
         else if atoms::some() == term { Ok(ErrorLevel::Some) }
         else if atoms::all() == term { Ok(ErrorLevel::All) }
-        else { Err(NifError::BadArg) }
+        else { Err(Error::BadArg) }
     }
 }
 
-fn term_to_configs(term: NifTerm) -> NifResult<ParseOpts> {
+fn term_to_configs(term: Term) -> NifResult<ParseOpts> {
     if atoms::nil() == term {
         Ok(ParseOpts::default())
     } else {
@@ -135,7 +135,7 @@ lazy_static! {
     static ref POOL: scoped_pool::Pool = scoped_pool::Pool::new(4);
 }
 
-fn parse<'a>(parser_type: ParserType, env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
+fn parse<'a>(parser_type: ParserType, env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
     let mut owned_env = OwnedEnv::new();
 
     // Copies the term into the inner env. Since this term is normally a large
@@ -152,7 +152,7 @@ fn parse<'a>(parser_type: ParserType, env: NifEnv<'a>, args: &[NifTerm<'a>]) -> 
             // This should not really be done in user code. We (Rustler project)
             // need to find a better abstraction that eliminates this.
             match panic::catch_unwind(|| {
-                let binary: NifBinary = match input_term.load(inner_env).decode() {
+                let binary: Binary = match input_term.load(inner_env).decode() {
                     Ok(inner) => inner,
                     Err(_) => panic!("argument is not a binary"),
                 };
@@ -206,11 +206,11 @@ fn parse<'a>(parser_type: ParserType, env: NifEnv<'a>, args: &[NifTerm<'a>]) -> 
     Ok(atoms::ok().encode(env))
 }
 
-fn parse_html<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
+fn parse_html<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
     parse(ParserType::HtmlDocument, env, args)
 }
 
-fn parse_xml<'a>(env: NifEnv<'a>, args: &[NifTerm<'a>]) -> NifResult<NifTerm<'a>> {
+fn parse_xml<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
     parse(ParserType::XmlDocument, env, args)
 }
 
@@ -222,6 +222,6 @@ rustler_export_nifs!(
     Some(on_load)
 );
 
-fn on_load<'a>(_env: NifEnv<'a>, _load_info: NifTerm<'a>) -> bool {
+fn on_load<'a>(_env: Env<'a>, _load_info: Term<'a>) -> bool {
     true
 }
