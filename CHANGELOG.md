@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.10.0 (2018-07-06)
+
+### Fixes
+
+  * Update to Rustler `v0.18`, which supports OTP 21
+  * Update types to work with Rustler `v0.17`
+
 ## v0.9.0 (2018-06-15)
 
 ### Enhancements
