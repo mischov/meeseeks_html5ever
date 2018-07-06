@@ -40,7 +40,7 @@ defmodule MeeseeksHtml5ever.Mixfile do
 
   defp deps do
     [
-      {:rustler, "~> 0.17.0"},
+      {:rustler, "~> 0.18.0"},
 
       # docs
       {:ex_doc, "~> 0.14.0", only: :docs},
