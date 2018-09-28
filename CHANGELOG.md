@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.10.1 (2018-09-27)
+
+### Enhancements
+
+  * Test more Elixir+OTP combinations with Travis CI
+
 ## v0.10.0 (2018-07-06)
 
 ### Fixes
