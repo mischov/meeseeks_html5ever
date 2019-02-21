@@ -242,13 +242,6 @@ impl TreeSink for FlatDom {
         self.add_node(ProcessingInstruction(target, data))
     }
 
-    fn has_parent_node(&self, node: &Self::Handle) -> bool {
-        match self.node(*node).parent {
-            Parent::None => false,
-            _ => true,
-        }
-    }
-
     fn append(&mut self, parent: &Self::Handle, child: NodeOrText<Self::Handle>) {
         match child {
             NodeOrText::AppendNode(node) => self.append_node(*parent, node),
@@ -288,7 +281,8 @@ impl TreeSink for FlatDom {
     }
 
     fn append_based_on_parent_node(&mut self, element: &Self::Handle, prev_element: &Self::Handle, child: NodeOrText<Self::Handle>) {
-        if self.has_parent_node(element) {
+        let has_parent = self.node(*element).parent.is_some();
+        if  has_parent {
             self.append_before_sibling(element, child);
         } else {
             self.append(prev_element, child);
