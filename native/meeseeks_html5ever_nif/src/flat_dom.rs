@@ -2,15 +2,15 @@ use std::borrow::Cow;
 use std::collections::HashSet;
 use std::default::Default;
 
-use html5ever::{ QualName, Attribute };
-use html5ever::tree_builder::{TreeSink, QuirksMode, NodeOrText, ElementFlags};
+use html5ever::tree_builder::{ElementFlags, NodeOrText, QuirksMode, TreeSink};
+use html5ever::{Attribute, QualName};
 use markup5ever::ExpandedName;
 
 use tendril::StrTendril;
 
-use rustler::{Env, Term, Encoder};
-use rustler::types::elixir_struct::{ make_ex_struct};
-use rustler::types::map::{ map_new };
+use rustler::types::elixir_struct::make_ex_struct;
+use rustler::types::map::map_new;
+use rustler::{Encoder, Env, Term};
 
 use self::NodeEnum::{Comment, Data, Doctype, Document, Element, ProcessingInstruction, Text};
 
@@ -60,12 +60,10 @@ enum NodeEnum {
 impl NodeEnum {
     fn script_or_style(&self) -> ScriptOrStyle {
         match *self {
-            Element(ref name, ..) => {
-                match name.expanded() {
-                    expanded_name!(html "script") => ScriptOrStyle::Script,
-                    expanded_name!(html "style") => ScriptOrStyle::Style,
-                    _ => ScriptOrStyle::Neither,
-                }
+            Element(ref name, ..) => match name.expanded() {
+                expanded_name!(html "script") => ScriptOrStyle::Script,
+                expanded_name!(html "style") => ScriptOrStyle::Style,
+                _ => ScriptOrStyle::Neither,
             },
             _ => ScriptOrStyle::Neither,
         }
@@ -76,7 +74,7 @@ impl NodeEnum {
             Text(ref mut current) | Data(_, ref mut current) => {
                 current.push_slice(text);
                 true
-            },
+            }
             _ => false,
         }
     }
@@ -96,7 +94,7 @@ impl Node {
         Node {
             parent: Parent::None,
             id: id,
-            children: vec!(),
+            children: vec![],
             last_string: false,
             node: node,
         }
@@ -109,7 +107,7 @@ impl Node {
 
 #[derive(Debug)]
 pub struct FlatDom {
-    nodes: Vec<Node>
+    nodes: Vec<Node>,
 }
 
 impl FlatDom {
@@ -142,12 +140,9 @@ impl FlatDom {
             };
         } else {
             let child = match self.node(parent).node.script_or_style() {
-                ScriptOrStyle::Script =>
-                    self.add_node(Data(DataType::Script, text)),
-                ScriptOrStyle::Style =>
-                    self.add_node(Data(DataType::Style, text)),
-                ScriptOrStyle::Neither =>
-                    self.add_node(Text(text)),
+                ScriptOrStyle::Script => self.add_node(Data(DataType::Script, text)),
+                ScriptOrStyle::Style => self.add_node(Data(DataType::Style, text)),
+                ScriptOrStyle::Neither => self.add_node(Text(text)),
             };
             self.node_mut(child).parent = Parent::Some(parent);
             let parent_node = self.node_mut(parent);
@@ -160,12 +155,10 @@ impl FlatDom {
         let maybe_parent = &self.node(child).parent;
         match *maybe_parent {
             Parent::None => None,
-            Parent::Some(parent) => {
-                match self.node(parent).index_of_child(child) {
-                    Some(i) => Some((parent, i)),
-                    None => panic!("have parent but not in parent"),
-                }
-            }
+            Parent::Some(parent) => match self.node(parent).index_of_child(child) {
+                Some(i) => Some((parent, i)),
+                None => panic!("have parent but not in parent"),
+            },
         }
     }
 
@@ -181,7 +174,7 @@ impl FlatDom {
 impl Default for FlatDom {
     fn default() -> FlatDom {
         FlatDom {
-            nodes: vec![Node::new(Id(0), Document)]
+            nodes: vec![Node::new(Id(0), Document)],
         }
     }
 }
@@ -203,8 +196,8 @@ impl TreeSink for FlatDom {
 
     fn get_template_contents(&mut self, target: &Self::Handle) -> Self::Handle {
         if let Element(_, _, true) = self.node(*target).node {
-           // Use template element as document fragment
-           target.clone()
+            // Use template element as document fragment
+            target.clone()
         } else {
             panic!("not a template element!")
         }
@@ -225,7 +218,12 @@ impl TreeSink for FlatDom {
         }
     }
 
-    fn create_element(&mut self, name: QualName, attrs: Vec<Attribute>, flags: ElementFlags) -> Self::Handle {
+    fn create_element(
+        &mut self,
+        name: QualName,
+        attrs: Vec<Attribute>,
+        flags: ElementFlags,
+    ) -> Self::Handle {
         self.add_node(Element(name, attrs, flags.template))
     }
 
@@ -250,7 +248,8 @@ impl TreeSink for FlatDom {
     }
 
     fn append_before_sibling(&mut self, sibling: &Self::Handle, child: NodeOrText<Self::Handle>) {
-        let (parent, i) = self.get_parent_and_index(*sibling)
+        let (parent, i) = self
+            .get_parent_and_index(*sibling)
             .expect("append_before_sibling called on node without parent");
 
         let child = match (child, i) {
@@ -259,12 +258,12 @@ impl TreeSink for FlatDom {
 
             // Check for text node before insertion point, append if there is
             (NodeOrText::AppendText(text), i) => {
-                let prev = self.node(parent).children[i-1];
+                let prev = self.node(parent).children[i - 1];
                 if self.node_mut(prev).node.append_text(&text) {
                     return;
                 }
                 self.add_node(Text(text))
-            },
+            }
 
             // Tree builder promises no text no *after* insertion point
 
@@ -280,16 +279,26 @@ impl TreeSink for FlatDom {
         self.node_mut(parent).children.insert(i, child);
     }
 
-    fn append_based_on_parent_node(&mut self, element: &Self::Handle, prev_element: &Self::Handle, child: NodeOrText<Self::Handle>) {
+    fn append_based_on_parent_node(
+        &mut self,
+        element: &Self::Handle,
+        prev_element: &Self::Handle,
+        child: NodeOrText<Self::Handle>,
+    ) {
         let has_parent = self.node(*element).parent.is_some();
-        if  has_parent {
+        if has_parent {
             self.append_before_sibling(element, child);
         } else {
             self.append(prev_element, child);
         }
     }
 
-    fn append_doctype_to_document(&mut self, name: StrTendril, public_id: StrTendril, system_id: StrTendril) {
+    fn append_doctype_to_document(
+        &mut self,
+        name: StrTendril,
+        public_id: StrTendril,
+        system_id: StrTendril,
+    ) {
         let doctype = self.add_node(Doctype(name, public_id, system_id));
         self.append_node(Id(0), doctype);
     }
@@ -302,11 +311,15 @@ impl TreeSink for FlatDom {
             panic!("not an element")
         };
 
-        let existing_names = target_attrs.iter().map(|e| e.name.clone())
+        let existing_names = target_attrs
+            .iter()
+            .map(|e| e.name.clone())
             .collect::<HashSet<_>>();
-        target_attrs.extend(attrs.into_iter().filter(|attr| {
-            !existing_names.contains(&attr.name)
-        }));
+        target_attrs.extend(
+            attrs
+                .into_iter()
+                .filter(|attr| !existing_names.contains(&attr.name)),
+        );
     }
 
     fn remove_from_parent(&mut self, target: &Self::Handle) {
@@ -391,10 +404,13 @@ impl Encoder for Parent {
     fn encode<'a>(&self, env: Env<'a>) -> Term<'a> {
         match *self {
             Parent::None => atoms::nil().encode(env),
-            Parent::Some(id) => if id == Id(0) {
-                atoms::nil().encode(env)
-            } else {
-                id.encode(env)}
+            Parent::Some(id) => {
+                if id == Id(0) {
+                    atoms::nil().encode(env)
+                } else {
+                    id.encode(env)
+                }
+            }
         }
     }
 }
@@ -429,13 +445,13 @@ fn ns_and_tag(name: &QualName) -> (&str, &str) {
             let ns: &str = prefix;
             let tag: &str = &name.local;
             (ns, tag)
-        },
+        }
         // When parsing with html5ever, the prefix in `prefix:tag` ends up
         // in the local name and needs to be split out.
         None => {
             let ns_tag: &str = &name.local;
             split_ns_and_tag(ns_tag)
-        },
+        }
     }
 }
 
@@ -447,33 +463,63 @@ impl Encoder for Node {
         match self.node {
             Comment(ref content) => {
                 let content_atom = atoms::content().encode(env);
-                make_ex_struct(env, "Elixir.Meeseeks.Document.Comment").ok().unwrap()
-                    .map_put(parent_atom, self.parent.encode(env)).ok().unwrap()
-                    .map_put(id_atom, self.id.encode(env)).ok().unwrap()
-                    .map_put(content_atom, STW(content).encode(env)).ok().unwrap()
-            },
+                make_ex_struct(env, "Elixir.Meeseeks.Document.Comment")
+                    .ok()
+                    .unwrap()
+                    .map_put(parent_atom, self.parent.encode(env))
+                    .ok()
+                    .unwrap()
+                    .map_put(id_atom, self.id.encode(env))
+                    .ok()
+                    .unwrap()
+                    .map_put(content_atom, STW(content).encode(env))
+                    .ok()
+                    .unwrap()
+            }
 
             Data(ref data_type, ref content) => {
                 let type_atom = atoms::type_().encode(env);
                 let content_atom = atoms::content().encode(env);
-                make_ex_struct(env, "Elixir.Meeseeks.Document.Data").ok().unwrap()
-                    .map_put(parent_atom, self.parent.encode(env)).ok().unwrap()
-                    .map_put(id_atom, self.id.encode(env)).ok().unwrap()
-                    .map_put(type_atom, data_type.encode(env)).ok().unwrap()
-                    .map_put(content_atom, STW(content).encode(env)).ok().unwrap()
-            },
+                make_ex_struct(env, "Elixir.Meeseeks.Document.Data")
+                    .ok()
+                    .unwrap()
+                    .map_put(parent_atom, self.parent.encode(env))
+                    .ok()
+                    .unwrap()
+                    .map_put(id_atom, self.id.encode(env))
+                    .ok()
+                    .unwrap()
+                    .map_put(type_atom, data_type.encode(env))
+                    .ok()
+                    .unwrap()
+                    .map_put(content_atom, STW(content).encode(env))
+                    .ok()
+                    .unwrap()
+            }
 
             Doctype(ref name, ref public, ref system) => {
                 let name_atom = atoms::name().encode(env);
                 let public_atom = atoms::public().encode(env);
                 let system_atom = atoms::system().encode(env);
-                make_ex_struct(env, "Elixir.Meeseeks.Document.Doctype").ok().unwrap()
-                    .map_put(parent_atom, self.parent.encode(env)).ok().unwrap()
-                    .map_put(id_atom, self.id.encode(env)).ok().unwrap()
-                    .map_put(name_atom, STW(name).encode(env)).ok().unwrap()
-                    .map_put(public_atom, STW(public).encode(env)).ok().unwrap()
-                    .map_put(system_atom, STW(system).encode(env)).ok().unwrap()
-            },
+                make_ex_struct(env, "Elixir.Meeseeks.Document.Doctype")
+                    .ok()
+                    .unwrap()
+                    .map_put(parent_atom, self.parent.encode(env))
+                    .ok()
+                    .unwrap()
+                    .map_put(id_atom, self.id.encode(env))
+                    .ok()
+                    .unwrap()
+                    .map_put(name_atom, STW(name).encode(env))
+                    .ok()
+                    .unwrap()
+                    .map_put(public_atom, STW(public).encode(env))
+                    .ok()
+                    .unwrap()
+                    .map_put(system_atom, STW(system).encode(env))
+                    .ok()
+                    .unwrap()
+            }
 
             Document => unreachable!(),
 
@@ -483,36 +529,68 @@ impl Encoder for Node {
                 let attributes_atom = atoms::attributes().encode(env);
                 let children_atom = atoms::children().encode(env);
                 let (namespace, tag) = ns_and_tag(&name);
-                let attribute_terms: Vec<Term<'a>> =
-                    attributes.iter()
+                let attribute_terms: Vec<Term<'a>> = attributes
+                    .iter()
                     .map(|a| (QNW(&a.name), STW(&a.value)).encode(env))
                     .collect();
-                make_ex_struct(env, "Elixir.Meeseeks.Document.Element").ok().unwrap()
-                    .map_put(parent_atom, self.parent.encode(env)).ok().unwrap()
-                    .map_put(id_atom, self.id.encode(env)).ok().unwrap()
-                    .map_put(namespace_atom, namespace.encode(env)).ok().unwrap()
-                    .map_put(tag_atom, tag.encode(env)).ok().unwrap()
-                    .map_put(attributes_atom, attribute_terms.encode(env)).ok().unwrap()
-                    .map_put(children_atom, self.children.encode(env)).ok().unwrap()
-            },
+                make_ex_struct(env, "Elixir.Meeseeks.Document.Element")
+                    .ok()
+                    .unwrap()
+                    .map_put(parent_atom, self.parent.encode(env))
+                    .ok()
+                    .unwrap()
+                    .map_put(id_atom, self.id.encode(env))
+                    .ok()
+                    .unwrap()
+                    .map_put(namespace_atom, namespace.encode(env))
+                    .ok()
+                    .unwrap()
+                    .map_put(tag_atom, tag.encode(env))
+                    .ok()
+                    .unwrap()
+                    .map_put(attributes_atom, attribute_terms.encode(env))
+                    .ok()
+                    .unwrap()
+                    .map_put(children_atom, self.children.encode(env))
+                    .ok()
+                    .unwrap()
+            }
 
             ProcessingInstruction(ref target, ref data) => {
                 let target_atom = atoms::target().encode(env);
                 let data_atom = atoms::data().encode(env);
-                make_ex_struct(env, "Elixir.Meeseeks.Document.ProcessingInstruction").ok().unwrap()
-                    .map_put(parent_atom, self.parent.encode(env)).ok().unwrap()
-                    .map_put(id_atom, self.id.encode(env)).ok().unwrap()
-                    .map_put(target_atom, STW(target).encode(env)).ok().unwrap()
-                    .map_put(data_atom, STW(data).encode(env)).ok().unwrap()
-            },
+                make_ex_struct(env, "Elixir.Meeseeks.Document.ProcessingInstruction")
+                    .ok()
+                    .unwrap()
+                    .map_put(parent_atom, self.parent.encode(env))
+                    .ok()
+                    .unwrap()
+                    .map_put(id_atom, self.id.encode(env))
+                    .ok()
+                    .unwrap()
+                    .map_put(target_atom, STW(target).encode(env))
+                    .ok()
+                    .unwrap()
+                    .map_put(data_atom, STW(data).encode(env))
+                    .ok()
+                    .unwrap()
+            }
 
             Text(ref content) => {
                 let content_atom = atoms::content().encode(env);
-                make_ex_struct(env, "Elixir.Meeseeks.Document.Text").ok().unwrap()
-                    .map_put(parent_atom, self.parent.encode(env)).ok().unwrap()
-                    .map_put(id_atom, self.id.encode(env)).ok().unwrap()
-                    .map_put(content_atom, STW(content).encode(env)).ok().unwrap()
-            },
+                make_ex_struct(env, "Elixir.Meeseeks.Document.Text")
+                    .ok()
+                    .unwrap()
+                    .map_put(parent_atom, self.parent.encode(env))
+                    .ok()
+                    .unwrap()
+                    .map_put(id_atom, self.id.encode(env))
+                    .ok()
+                    .unwrap()
+                    .map_put(content_atom, STW(content).encode(env))
+                    .ok()
+                    .unwrap()
+            }
         }
     }
 }
@@ -527,11 +605,20 @@ impl Encoder for FlatDom {
         let id_counter = self.nodes.len() - 1;
         let roots = &self.nodes[0].children;
         let nodes = map_new(env);
-        let nodes_term = self.nodes.iter().skip(1).fold(nodes, |m, n|
-                                                      m.map_put(n.id.encode(env), n.encode(env)).ok().unwrap());
-        make_ex_struct(env, "Elixir.Meeseeks.Document").ok().unwrap()
-            .map_put(id_counter_atom, id_counter.encode(env)).ok().unwrap()
-            .map_put(roots_atom, roots.encode(env)).ok().unwrap()
-            .map_put(nodes_atom, nodes_term).ok().unwrap()
+        let nodes_term = self.nodes.iter().skip(1).fold(nodes, |m, n| {
+            m.map_put(n.id.encode(env), n.encode(env)).ok().unwrap()
+        });
+        make_ex_struct(env, "Elixir.Meeseeks.Document")
+            .ok()
+            .unwrap()
+            .map_put(id_counter_atom, id_counter.encode(env))
+            .ok()
+            .unwrap()
+            .map_put(roots_atom, roots.encode(env))
+            .ok()
+            .unwrap()
+            .map_put(nodes_atom, nodes_term)
+            .ok()
+            .unwrap()
     }
 }
