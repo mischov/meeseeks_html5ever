@@ -6,26 +6,26 @@ extern crate html5ever;
 extern crate xml5ever;
 #[macro_use]
 extern crate markup5ever;
-extern crate tendril;
 extern crate scoped_pool;
+extern crate tendril;
 
 use std::panic;
 
 mod flat_dom;
-use flat_dom::{FlatDom};
+use flat_dom::FlatDom;
 
 use rustler::{
-    Env,
-    Term,
-    NifResult,
     Encoder,
     // For use with term_to_configs
     //Decoder,
     //Error,
+    Env,
+    NifResult,
+    Term,
 };
 
-use rustler::types::binary::Binary;
 use rustler::env::OwnedEnv;
+use rustler::types::binary::Binary;
 
 use tendril::TendrilSink;
 
@@ -162,43 +162,36 @@ fn parse<'a>(parser_type: ParserType, env: Env<'a>, args: &[Term<'a>]) -> NifRes
                 let result = match parser_type {
                     ParserType::HtmlDocument => {
                         // TODO: Use Parser.from_bytes instead?
-                        let parser = html5ever::parse_document(
-                            sink, Default::default());
-                        parser.one(
-                            std::str::from_utf8(binary.as_slice()).unwrap())
-                    },
+                        let parser = html5ever::parse_document(sink, Default::default());
+                        parser.one(std::str::from_utf8(binary.as_slice()).unwrap())
+                    }
 
                     ParserType::XmlDocument => {
                         // TODO: Use Parser.from_bytes instead?
-                        let parser = xml5ever::driver::parse_document(
-                            sink, Default::default());
-                        parser.one(
-                            std::str::from_utf8(binary.as_slice()).unwrap())
-                    },
+                        let parser = xml5ever::driver::parse_document(sink, Default::default());
+                        parser.one(std::str::from_utf8(binary.as_slice()).unwrap())
+                    }
                 };
 
                 let result_term = result.encode(inner_env);
 
                 //let result_term = handle_to_term(inner_env, &index, &Parent::None, &result.document);
 
-                (atoms::html5ever_nif_result(), atoms::ok(), result_term)
-                    .encode(inner_env)
+                (atoms::html5ever_nif_result(), atoms::ok(), result_term).encode(inner_env)
             }) {
                 Ok(term) => term,
                 Err(err) => {
                     // Try to extract a panic reason and return that. If this
                     // fails, fail generically.
-                    let reason =
-                        if let Some(s) = err.downcast_ref::<String>() {
-                            s.encode(inner_env)
-                        } else if let Some(&s) = err.downcast_ref::<&'static str>() {
-                            s.encode(inner_env)
-                        } else {
-                            atoms::nif_panic().encode(inner_env)
-                        };
-                    (atoms::html5ever_nif_result(), atoms::error(), reason)
-                        .encode(inner_env)
-                },
+                    let reason = if let Some(s) = err.downcast_ref::<String>() {
+                        s.encode(inner_env)
+                    } else if let Some(&s) = err.downcast_ref::<&'static str>() {
+                        s.encode(inner_env)
+                    } else {
+                        atoms::nif_panic().encode(inner_env)
+                    };
+                    (atoms::html5ever_nif_result(), atoms::error(), reason).encode(inner_env)
+                }
             }
         });
     });
@@ -216,9 +209,7 @@ fn parse_xml<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
 
 rustler_export_nifs!(
     "Elixir.MeeseeksHtml5ever.Native",
-    [("parse_html", 1, parse_html),
-     ("parse_xml", 1, parse_xml),
-    ],
+    [("parse_html", 1, parse_html), ("parse_xml", 1, parse_xml),],
     Some(on_load)
 );
 
