@@ -9,11 +9,11 @@ path = "src/lib.rs"
 crate-type = ["dylib"]
 
 [dependencies]
-rustler = "^0.18"
+rustler = "0.18"
 
-html5ever = "0.20.0"
-xml5ever = "0.10.0"
-markup5ever = "0.5"
+html5ever = "0.22"
+xml5ever = "0.12"
+markup5ever = "0.7"
 tendril = "0.4"
-lazy_static = "0.2"
-scoped-pool = "1.0.0"
+lazy_static = "1.2"
+scoped-pool = "1.0"
