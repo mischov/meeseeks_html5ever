@@ -9,7 +9,7 @@ defmodule MeeseeksHtml5ever.Mixfile do
       name: "MeeseeksHtml5ever",
       version: @version,
       description: description(),
-      elixir: "~> 1.3",
+      elixir: "~> 1.4",
       deps: deps(),
       package: package(),
       source_url: "https://github.com/mischov/meeseeks_html5ever",
