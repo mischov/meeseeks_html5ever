@@ -8,8 +8,6 @@ use markup5ever::ExpandedName;
 
 use tendril::StrTendril;
 
-use rustler::types::elixir_struct::make_ex_struct;
-use rustler::types::map::map_new;
 use rustler::{Encoder, Env, Term};
 
 use self::NodeEnum::{Comment, Data, Doctype, Document, Element, ProcessingInstruction, Text};
@@ -362,6 +360,15 @@ mod atoms {
         atom id_counter;
         atom roots;
         atom nodes;
+
+        atom __struct__;
+        atom document = "Elixir.Meeseeks.Document";
+        atom document_comment = "Elixir.Meeseeks.Document.Comment";
+        atom document_data = "Elixir.Meeseeks.Document.Data";
+        atom document_doctype = "Elixir.Meeseeks.Document.Doctype";
+        atom document_element = "Elixir.Meeseeks.Document.Element";
+        atom document_pi = "Elixir.Meeseeks.Document.ProcessingInstruction";
+        atom document_text = "Elixir.Meeseeks.Document.Text";
     }
 }
 
@@ -457,73 +464,67 @@ fn ns_and_tag(name: &QualName) -> (&str, &str) {
 
 impl Encoder for Node {
     fn encode<'a>(&self, env: Env<'a>) -> Term<'a> {
+        let struct_atom = atoms::__struct__().encode(env);
         let parent_atom = atoms::parent().encode(env);
         let id_atom = atoms::id().encode(env);
 
         match self.node {
             Comment(ref content) => {
+                let document_comment_atom = atoms::document_comment().encode(env);
                 let content_atom = atoms::content().encode(env);
-                make_ex_struct(env, "Elixir.Meeseeks.Document.Comment")
-                    .ok()
-                    .unwrap()
-                    .map_put(parent_atom, self.parent.encode(env))
-                    .ok()
-                    .unwrap()
-                    .map_put(id_atom, self.id.encode(env))
-                    .ok()
-                    .unwrap()
-                    .map_put(content_atom, STW(content).encode(env))
-                    .ok()
-                    .unwrap()
+                let keys = vec![struct_atom, parent_atom, id_atom, content_atom];
+                let values = vec![
+                    document_comment_atom,
+                    self.parent.encode(env),
+                    self.id.encode(env),
+                    STW(content).encode(env),
+                ];
+                Term::map_from_arrays(env, &keys, &values).ok().unwrap()
             }
 
             Data(ref data_type, ref content) => {
+                let document_data_atom = atoms::document_data().encode(env);
                 let type_atom = atoms::type_().encode(env);
                 let content_atom = atoms::content().encode(env);
-                make_ex_struct(env, "Elixir.Meeseeks.Document.Data")
-                    .ok()
-                    .unwrap()
-                    .map_put(parent_atom, self.parent.encode(env))
-                    .ok()
-                    .unwrap()
-                    .map_put(id_atom, self.id.encode(env))
-                    .ok()
-                    .unwrap()
-                    .map_put(type_atom, data_type.encode(env))
-                    .ok()
-                    .unwrap()
-                    .map_put(content_atom, STW(content).encode(env))
-                    .ok()
-                    .unwrap()
+                let keys = vec![struct_atom, parent_atom, id_atom, type_atom, content_atom];
+                let values = vec![
+                    document_data_atom,
+                    self.parent.encode(env),
+                    self.id.encode(env),
+                    data_type.encode(env),
+                    STW(content).encode(env),
+                ];
+                Term::map_from_arrays(env, &keys, &values).ok().unwrap()
             }
 
             Doctype(ref name, ref public, ref system) => {
+                let document_doctype_atom = atoms::document_doctype().encode(env);
                 let name_atom = atoms::name().encode(env);
                 let public_atom = atoms::public().encode(env);
                 let system_atom = atoms::system().encode(env);
-                make_ex_struct(env, "Elixir.Meeseeks.Document.Doctype")
-                    .ok()
-                    .unwrap()
-                    .map_put(parent_atom, self.parent.encode(env))
-                    .ok()
-                    .unwrap()
-                    .map_put(id_atom, self.id.encode(env))
-                    .ok()
-                    .unwrap()
-                    .map_put(name_atom, STW(name).encode(env))
-                    .ok()
-                    .unwrap()
-                    .map_put(public_atom, STW(public).encode(env))
-                    .ok()
-                    .unwrap()
-                    .map_put(system_atom, STW(system).encode(env))
-                    .ok()
-                    .unwrap()
+                let keys = vec![
+                    struct_atom,
+                    parent_atom,
+                    id_atom,
+                    name_atom,
+                    public_atom,
+                    system_atom,
+                ];
+                let values = vec![
+                    document_doctype_atom,
+                    self.parent.encode(env),
+                    self.id.encode(env),
+                    STW(name).encode(env),
+                    STW(public).encode(env),
+                    STW(system).encode(env),
+                ];
+                Term::map_from_arrays(env, &keys, &values).ok().unwrap()
             }
 
             Document => unreachable!(),
 
             Element(ref name, ref attributes, ref _template) => {
+                let document_element_atom = atoms::document_element().encode(env);
                 let namespace_atom = atoms::namespace().encode(env);
                 let tag_atom = atoms::tag().encode(env);
                 let attributes_atom = atoms::attributes().encode(env);
@@ -533,63 +534,53 @@ impl Encoder for Node {
                     .iter()
                     .map(|a| (QNW(&a.name), STW(&a.value)).encode(env))
                     .collect();
-                make_ex_struct(env, "Elixir.Meeseeks.Document.Element")
-                    .ok()
-                    .unwrap()
-                    .map_put(parent_atom, self.parent.encode(env))
-                    .ok()
-                    .unwrap()
-                    .map_put(id_atom, self.id.encode(env))
-                    .ok()
-                    .unwrap()
-                    .map_put(namespace_atom, namespace.encode(env))
-                    .ok()
-                    .unwrap()
-                    .map_put(tag_atom, tag.encode(env))
-                    .ok()
-                    .unwrap()
-                    .map_put(attributes_atom, attribute_terms.encode(env))
-                    .ok()
-                    .unwrap()
-                    .map_put(children_atom, self.children.encode(env))
-                    .ok()
-                    .unwrap()
+                let keys = vec![
+                    struct_atom,
+                    parent_atom,
+                    id_atom,
+                    namespace_atom,
+                    tag_atom,
+                    attributes_atom,
+                    children_atom,
+                ];
+                let values = vec![
+                    document_element_atom,
+                    self.parent.encode(env),
+                    self.id.encode(env),
+                    namespace.encode(env),
+                    tag.encode(env),
+                    attribute_terms.encode(env),
+                    self.children.encode(env),
+                ];
+                Term::map_from_arrays(env, &keys, &values).ok().unwrap()
             }
 
             ProcessingInstruction(ref target, ref data) => {
+                let document_pi_atom = atoms::document_pi().encode(env);
                 let target_atom = atoms::target().encode(env);
                 let data_atom = atoms::data().encode(env);
-                make_ex_struct(env, "Elixir.Meeseeks.Document.ProcessingInstruction")
-                    .ok()
-                    .unwrap()
-                    .map_put(parent_atom, self.parent.encode(env))
-                    .ok()
-                    .unwrap()
-                    .map_put(id_atom, self.id.encode(env))
-                    .ok()
-                    .unwrap()
-                    .map_put(target_atom, STW(target).encode(env))
-                    .ok()
-                    .unwrap()
-                    .map_put(data_atom, STW(data).encode(env))
-                    .ok()
-                    .unwrap()
+                let keys = vec![struct_atom, parent_atom, id_atom, target_atom, data_atom];
+                let values = vec![
+                    document_pi_atom,
+                    self.parent.encode(env),
+                    self.id.encode(env),
+                    STW(target).encode(env),
+                    STW(data).encode(env),
+                ];
+                Term::map_from_arrays(env, &keys, &values).ok().unwrap()
             }
 
             Text(ref content) => {
+                let document_text_atom = atoms::document_text().encode(env);
                 let content_atom = atoms::content().encode(env);
-                make_ex_struct(env, "Elixir.Meeseeks.Document.Text")
-                    .ok()
-                    .unwrap()
-                    .map_put(parent_atom, self.parent.encode(env))
-                    .ok()
-                    .unwrap()
-                    .map_put(id_atom, self.id.encode(env))
-                    .ok()
-                    .unwrap()
-                    .map_put(content_atom, STW(content).encode(env))
-                    .ok()
-                    .unwrap()
+                let keys = vec![struct_atom, parent_atom, id_atom, content_atom];
+                let values = vec![
+                    document_text_atom,
+                    self.parent.encode(env),
+                    self.id.encode(env),
+                    STW(content).encode(env),
+                ];
+                Term::map_from_arrays(env, &keys, &values).ok().unwrap()
             }
         }
     }
@@ -599,26 +590,29 @@ impl Encoder for Node {
 
 impl Encoder for FlatDom {
     fn encode<'a>(&self, env: Env<'a>) -> Term<'a> {
+        let struct_atom = atoms::__struct__().encode(env);
+        let document_atom = atoms::document().encode(env);
         let id_counter_atom = atoms::id_counter().encode(env);
         let roots_atom = atoms::roots().encode(env);
         let nodes_atom = atoms::nodes().encode(env);
         let id_counter = self.nodes.len() - 1;
         let roots = &self.nodes[0].children;
-        let nodes = map_new(env);
-        let nodes_term = self.nodes.iter().skip(1).fold(nodes, |m, n| {
-            m.map_put(n.id.encode(env), n.encode(env)).ok().unwrap()
-        });
-        make_ex_struct(env, "Elixir.Meeseeks.Document")
+        let (node_keys, node_values): (Vec<_>, Vec<_>) = self
+            .nodes
+            .iter()
+            .skip(1)
+            .map(|n| (n.id.encode(env), n.encode(env)))
+            .unzip();
+        let nodes_term = Term::map_from_arrays(env, &node_keys, &node_values)
             .ok()
-            .unwrap()
-            .map_put(id_counter_atom, id_counter.encode(env))
-            .ok()
-            .unwrap()
-            .map_put(roots_atom, roots.encode(env))
-            .ok()
-            .unwrap()
-            .map_put(nodes_atom, nodes_term)
-            .ok()
-            .unwrap()
+            .unwrap();
+        let keys = vec![struct_atom, id_counter_atom, roots_atom, nodes_atom];
+        let values = vec![
+            document_atom,
+            id_counter.encode(env),
+            roots.encode(env),
+            nodes_term,
+        ];
+        Term::map_from_arrays(env, &keys, &values).ok().unwrap()
     }
 }
