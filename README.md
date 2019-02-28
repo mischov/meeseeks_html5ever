@@ -5,13 +5,13 @@
 
 Originally a fork of Hansihe's [html5ever_elixir](https://github.com/hansihe/html5ever_elixir) that is more tightly coupled with [Meeseeks](https://github.com/mischov/meeseeks), Meeseeks_Html5ever has grown to include additional functionality, such as use of xml5ever for XML parsing.
 
+## Compatibility
+
+Meeseeks_Html5ever is tested with a minimum combination of Elixir 1.4.0 and Erlang/OTP 19.3, and a maximum combination of Elixir 1.8.1 and Erlang/OTP 21.0.
+
 ## Dependencies
 
 Meeseeks_Html5ever depends on the Rust library [html5ever](https://github.com/servo/html5ever), and you will need to have the Rust compiler [installed](https://www.rust-lang.org/en-US/install.html).
-
-## Compatibility
-
-Meeseeks_Html5ever is tested with a minimum combination of Elixir 1.4.0 and Erlang/OTP 19.3, and a maximum combination of Elixir 1.8.1 and Erlang/OTP 21.0
 
 ## Installation
 
@@ -20,7 +20,7 @@ Ensure Rust is installed, then add Meeseeks_Html5ever to your `mix.exs`:
 ```elixir
 def deps do
   [
-    {:meeseeks_html5ever, "~> 0.10.1"}
+    {:meeseeks_html5ever, "~> 0.11.0"}
   ]
 end
 ```

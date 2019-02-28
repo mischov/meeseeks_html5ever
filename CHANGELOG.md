@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.11.0 (2019-02-27)
+
+### Compatibility
+
+  * No longer support Elixir 1.3 (minimum tested compatibility is now Elixir 1.4 and Erlang/OTP 19.3)
+  * Support Elixir 1.8
+
+### Enhancements
+
+  * Faster, more memory efficient encoding on Erlang/OTP 21
+  * Update to latest versions of `html5ever`, `xml5ever`, and `rustler`
+
+###
+
 ## v0.10.1 (2018-09-27)
 
 ### Enhancements
