@@ -6,7 +6,7 @@ defmodule MeeseeksHtml5ever do
   """
 
   @doc """
-  Parses an HTML string into a `Meseeks.Document`.
+  Parses an HTML string into a `Meeseeks.Document`.
   """
   def parse_html(html) do
     MeeseeksHtml5ever.Native.parse_html(html)
@@ -21,7 +21,7 @@ defmodule MeeseeksHtml5ever do
   end
 
   @doc """
-  Parses an XML string into a `Meseeks.Document`.
+  Parses an XML string into a `Meeseeks.Document`.
   """
   def parse_xml(xml) do
     MeeseeksHtml5ever.Native.parse_xml(xml)

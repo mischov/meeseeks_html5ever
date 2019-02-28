@@ -3,11 +3,15 @@
 [![Build Status](https://travis-ci.org/mischov/meeseeks_html5ever.svg?branch=master)](https://travis-ci.org/mischov/meeseeks_html5ever)
 [![MeeseeksHtml5ever version](https://img.shields.io/hexpm/v/meeseeks_html5ever.svg)](https://hex.pm/packages/meeseeks_html5ever)
 
-A fork of Hansihe's [html5ever_elixir](https://github.com/hansihe/html5ever_elixir) that is more tightly coupled with [Meeseeks](https://github.com/mischov/meeseeks).
+Originally a fork of Hansihe's [html5ever_elixir](https://github.com/hansihe/html5ever_elixir) that is more tightly coupled with [Meeseeks](https://github.com/mischov/meeseeks), Meeseeks_Html5ever has grown to include additional functionality, such as use of xml5ever for XML parsing.
 
 ## Dependencies
 
 Meeseeks_Html5ever depends on the Rust library [html5ever](https://github.com/servo/html5ever), and you will need to have the Rust compiler [installed](https://www.rust-lang.org/en-US/install.html).
+
+## Compatibility
+
+Meeseeks_Html5ever is tested with a minimum combination of Elixir 1.4.0 and Erlang/OTP 19.3, and a maximum combination of Elixir 1.8.1 and Erlang/OTP 21.0
 
 ## Installation
 
@@ -22,6 +26,37 @@ end
 ```
 
 Finally, run `mix deps.get`.
+
+## Contribute
+
+Contributions are very welcome, especially bug reports.
+
+If submitting a bug report, please search open and closed issues first.
+
+To make a pull request, fork the project, create a topic branch off of `master`, push your topic branch to your fork, and open a pull request.
+
+If you're submitting a bug fix, please include a test or tests that would have caught the problem.
+
+If you're submitting new features, please test and document as appropriate.
+
+Before submitting a PR, please run `mix format`.
+
+By submitting a patch, you agree to license your work under the license of this project.
+
+### Running Tests
+
+```
+$ git clone https://github.com/mischov/meeseeks.git
+$ cd meeseeks_html5ever
+$ mix deps.get
+$ mix test
+```
+
+### Building Docs
+
+```
+$ MIX_ENV=docs mix docs
+```
 
 ## License
 
