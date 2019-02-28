@@ -43,7 +43,7 @@ defmodule MeeseeksHtml5ever.Mixfile do
       {:rustler, "~> 0.20.0"},
 
       # docs
-      {:ex_doc, "~> 0.19.0", only: :docs, runtime: false}
+      {:ex_doc, ex_doc_version(), only: :docs, runtime: false}
     ]
   end
 
