@@ -13,7 +13,7 @@ defmodule MeeseeksHtml5ever.Mixfile do
       deps: deps(),
       package: package(),
       source_url: "https://github.com/mischov/meeseeks_html5ever",
-      docs: [main: "MeeseeksHtml5ever"],
+      docs: docs(),
       build_embedded: Mix.env() == :prod,
       start_permanent: Mix.env() == :prod,
       compilers: [:rustler] ++ Mix.compilers(),
@@ -43,9 +43,12 @@ defmodule MeeseeksHtml5ever.Mixfile do
       {:rustler, "~> 0.20.0"},
 
       # docs
-      {:ex_doc, "~> 0.14.0", only: :docs},
-      {:markdown, github: "devinus/markdown", only: :docs}
+      {:ex_doc, "~> 0.19.0", only: :docs, runtime: false}
     ]
+  end
+
+  defp ex_doc_version do
+    if System.version() >= "1.7", do: "~> 0.19.0", else: "~> 0.18.0"
   end
 
   defp description do
@@ -61,5 +64,9 @@ defmodule MeeseeksHtml5ever.Mixfile do
       files: ["lib", "native", "mix.exs", "README.md", "LICENSE-MIT", "LICENSE-APACHE"],
       links: %{"GitHub" => "https://github.com/mischov/meeseeks_html5ever"}
     ]
+  end
+
+  defp docs do
+    [main: "MeeseeksHtml5ever"]
   end
 end
