@@ -163,13 +163,22 @@ fn parse<'a>(parser_type: ParserType, env: Env<'a>, args: &[Term<'a>]) -> NifRes
                     ParserType::HtmlDocument => {
                         // TODO: Use Parser.from_bytes instead?
                         let parser = html5ever::parse_document(sink, Default::default());
-                        parser.one(std::str::from_utf8(binary.as_slice()).unwrap())
+
+                        match std::str::from_utf8(binary.as_slice()) {
+                            Ok(decoded) => parser.one(decoded),
+                            Err(_) => panic!("input is not valid utf8"),
+                        }
                     }
 
                     ParserType::XmlDocument => {
                         // TODO: Use Parser.from_bytes instead?
                         let parser = xml5ever::driver::parse_document(sink, Default::default());
-                        parser.one(std::str::from_utf8(binary.as_slice()).unwrap())
+
+                        match std::str::from_utf8(binary.as_slice()) {
+                            Ok(decoded) => parser.one(decoded),
+                            Err(_) => panic!("input is not valid utf8"),
+                        }
+
                     }
                 };
 
