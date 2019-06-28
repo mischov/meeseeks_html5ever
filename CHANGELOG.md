@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.11.1 (2019-06-28)
+
+### Fixes
+
+  * Improve error returned when provided with non-UTF-8 input
+
 ## v0.11.0 (2019-02-27)
 
 ### Compatibility
