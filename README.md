@@ -7,7 +7,7 @@ Originally a fork of Hansihe's [html5ever_elixir](https://github.com/hansihe/htm
 
 ## Compatibility
 
-Meeseeks_Html5ever is tested with a minimum combination of Elixir 1.4.0 and Erlang/OTP 19.3, and a maximum combination of Elixir 1.8.1 and Erlang/OTP 21.0.
+Meeseeks_Html5ever is tested with a minimum combination of Elixir 1.6.0 and Erlang/OTP 20.0, and a maximum combination of Elixir 1.9.0 and Erlang/OTP 22.0.
 
 ## Dependencies
 
