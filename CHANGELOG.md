@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.12.1 (2019-09-09)
+
+### Enhancements
+
+  * Use dirty scheduler for NIF instead of working asynchronously
+
 ## v0.12.0 (2019-09-08)
 
 ### Compatability
