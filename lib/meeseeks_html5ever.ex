@@ -9,9 +9,7 @@ defmodule MeeseeksHtml5ever do
   Parses an HTML string into a `Meeseeks.Document`.
   """
   def parse_html(html) do
-    MeeseeksHtml5ever.Native.parse_html(html)
-
-    receive do
+    case MeeseeksHtml5ever.Native.parse_html(html) do
       {:html5ever_nif_result, :ok, result} ->
         {:ok, result}
 
@@ -24,9 +22,7 @@ defmodule MeeseeksHtml5ever do
   Parses an XML string into a `Meeseeks.Document`.
   """
   def parse_xml(xml) do
-    MeeseeksHtml5ever.Native.parse_xml(xml)
-
-    receive do
+    case MeeseeksHtml5ever.Native.parse_xml(xml) do
       {:html5ever_nif_result, :ok, result} ->
         {:ok, result}
 
