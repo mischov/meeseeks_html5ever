@@ -1,12 +1,9 @@
 #[macro_use]
 extern crate rustler;
-#[macro_use]
-extern crate lazy_static;
 extern crate html5ever;
 extern crate xml5ever;
 #[macro_use]
 extern crate markup5ever;
-extern crate scoped_pool;
 extern crate tendril;
 
 use std::panic;
@@ -24,7 +21,7 @@ use rustler::{
     Term,
 };
 
-use rustler::env::OwnedEnv;
+use rustler::schedule::SchedulerFlags;
 use rustler::types::binary::Binary;
 
 use tendril::TendrilSink;
@@ -129,83 +126,53 @@ enum ParserType {
     XmlDocument,
 }
 
-// Thread pool for `parse_async`.
-// TODO: How do we decide on pool size?
-lazy_static! {
-    static ref POOL: scoped_pool::Pool = scoped_pool::Pool::new(4);
-}
-
 fn parse<'a>(parser_type: ParserType, env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
-    let mut owned_env = OwnedEnv::new();
+    match panic::catch_unwind(|| {
+        let binary: Binary = match args[0].decode() {
+            Ok(inner) => inner,
+            Err(_) => panic!("argument is not a binary"),
+        };
 
-    // Copies the term into the inner env. Since this term is normally a large
-    // binary term, copying it over should be cheap, since the binary will be
-    // refcounted within the BEAM.
-    let input_term = owned_env.save(args[0]);
+        let sink = FlatDom::default();
 
-    let return_pid = env.pid();
+        let result = match parser_type {
+            ParserType::HtmlDocument => {
+                let parser = html5ever::parse_document(sink, Default::default());
 
-    //let config = term_to_configs(args[1]);
-
-    POOL.spawn(move || {
-        owned_env.send_and_clear(&return_pid, |inner_env| {
-            // This should not really be done in user code. We (Rustler project)
-            // need to find a better abstraction that eliminates this.
-            match panic::catch_unwind(|| {
-                let binary: Binary = match input_term.load(inner_env).decode() {
-                    Ok(inner) => inner,
-                    Err(_) => panic!("argument is not a binary"),
-                };
-
-                let sink = FlatDom::default();
-
-                let result = match parser_type {
-                    ParserType::HtmlDocument => {
-                        // TODO: Use Parser.from_bytes instead?
-                        let parser = html5ever::parse_document(sink, Default::default());
-
-                        match std::str::from_utf8(binary.as_slice()) {
-                            Ok(decoded) => parser.one(decoded),
-                            Err(_) => panic!("input is not valid utf8"),
-                        }
-                    }
-
-                    ParserType::XmlDocument => {
-                        // TODO: Use Parser.from_bytes instead?
-                        let parser = xml5ever::driver::parse_document(sink, Default::default());
-
-                        match std::str::from_utf8(binary.as_slice()) {
-                            Ok(decoded) => parser.one(decoded),
-                            Err(_) => panic!("input is not valid utf8"),
-                        }
-
-                    }
-                };
-
-                let result_term = result.encode(inner_env);
-
-                //let result_term = handle_to_term(inner_env, &index, &Parent::None, &result.document);
-
-                (atoms::html5ever_nif_result(), atoms::ok(), result_term).encode(inner_env)
-            }) {
-                Ok(term) => term,
-                Err(err) => {
-                    // Try to extract a panic reason and return that. If this
-                    // fails, fail generically.
-                    let reason = if let Some(s) = err.downcast_ref::<String>() {
-                        s.encode(inner_env)
-                    } else if let Some(&s) = err.downcast_ref::<&'static str>() {
-                        s.encode(inner_env)
-                    } else {
-                        atoms::nif_panic().encode(inner_env)
-                    };
-                    (atoms::html5ever_nif_result(), atoms::error(), reason).encode(inner_env)
+                match std::str::from_utf8(binary.as_slice()) {
+                    Ok(decoded) => parser.one(decoded),
+                    Err(_) => panic!("input is not valid utf8"),
                 }
             }
-        });
-    });
 
-    Ok(atoms::ok().encode(env))
+            ParserType::XmlDocument => {
+                let parser = xml5ever::driver::parse_document(sink, Default::default());
+
+                match std::str::from_utf8(binary.as_slice()) {
+                    Ok(decoded) => parser.one(decoded),
+                    Err(_) => panic!("input is not valid utf8"),
+                }
+            }
+        };
+
+        let result_term = result.encode(env);
+
+        (atoms::html5ever_nif_result(), atoms::ok(), result_term).encode(env)
+    }) {
+        Ok(term) => Ok(term),
+        Err(err) => {
+            // Try to extract a panic reason and return that. If this
+            // fails, fail generically.
+            let reason = if let Some(s) = err.downcast_ref::<String>() {
+                s.encode(env)
+            } else if let Some(&s) = err.downcast_ref::<&'static str>() {
+                s.encode(env)
+            } else {
+                atoms::nif_panic().encode(env)
+            };
+            Ok((atoms::html5ever_nif_result(), atoms::error(), reason).encode(env))
+        }
+    }
 }
 
 fn parse_html<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
@@ -218,7 +185,10 @@ fn parse_xml<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
 
 rustler_export_nifs!(
     "Elixir.MeeseeksHtml5ever.Native",
-    [("parse_html", 1, parse_html), ("parse_xml", 1, parse_xml),],
+    [
+        ("parse_html", 1, parse_html, SchedulerFlags::DirtyCpu),
+        ("parse_xml", 1, parse_xml, SchedulerFlags::DirtyCpu),
+    ],
     Some(on_load)
 );
 
