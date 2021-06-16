@@ -336,39 +336,39 @@ impl TreeSink for FlatDom {
 // NIF Encoding
 
 mod atoms {
-    rustler_atoms! {
-        atom nil;
+    atoms! {
+        nil,
 
-        atom parent;
-        atom id;
-        atom content;
-        atom name;
-        atom public;
-        atom system;
-        atom namespace;
-        atom tag;
-        atom attributes;
-        atom children;
-        atom target;
-        atom data;
+        parent,
+        id,
+        content,
+        name,
+        public,
+        system,
+        namespace,
+        tag,
+        attributes,
+        children,
+        target,
+        data,
 
-        atom type_ = "type";
-        atom script;
-        atom style;
-        atom cdata;
+        type_ = "type",
+        script,
+        style,
+        cdata,
 
-        atom id_counter;
-        atom roots;
-        atom nodes;
+        id_counter,
+        roots,
+        nodes,
 
-        atom __struct__;
-        atom document = "Elixir.Meeseeks.Document";
-        atom document_comment = "Elixir.Meeseeks.Document.Comment";
-        atom document_data = "Elixir.Meeseeks.Document.Data";
-        atom document_doctype = "Elixir.Meeseeks.Document.Doctype";
-        atom document_element = "Elixir.Meeseeks.Document.Element";
-        atom document_pi = "Elixir.Meeseeks.Document.ProcessingInstruction";
-        atom document_text = "Elixir.Meeseeks.Document.Text";
+        __struct__,
+        document = "Elixir.Meeseeks.Document",
+        document_comment = "Elixir.Meeseeks.Document.Comment",
+        document_data = "Elixir.Meeseeks.Document.Data",
+        document_doctype = "Elixir.Meeseeks.Document.Doctype",
+        document_element = "Elixir.Meeseeks.Document.Element",
+        document_pi = "Elixir.Meeseeks.Document.ProcessingInstruction",
+        document_text = "Elixir.Meeseeks.Document.Text",
     }
 }
 

@@ -21,7 +21,6 @@ use rustler::{
     Term,
 };
 
-use rustler::schedule::SchedulerFlags;
 use rustler::types::binary::Binary;
 
 use tendril::TendrilSink;
@@ -29,12 +28,12 @@ use tendril::TendrilSink;
 // If using term_to_configs, remove this mod atoms and use commented
 
 mod atoms {
-    rustler_atoms! {
-        atom html5ever_nif_result;
+    atoms! {
+        html5ever_nif_result,
 
-        atom ok;
-        atom error;
-        atom nif_panic;
+        ok,
+        error,
+        nif_panic,
     }
 }
 
@@ -47,23 +46,23 @@ use html5ever::tree_builder::TreeBuilderOpts;
 use html5ever::tree_builder::interface::QuirksMode;
 
 mod atoms {
-    rustler_atoms! {
-        atom html5ever_nif_result;
+    atoms! {
+        html5ever_nif_result,
 
-        atom ok;
-        atom error;
-        atom nil;
-        atom nif_panic;
+        ok,
+        error,
+        nil,
+        nif_panic,
 
-        atom error_level;
-        atom discard_bom;
-        atom scripting_enabled;
-        atom iframe_srcdoc;
-        atom drop_doctype;
+        error_level,
+        discard_bom,
+        scripting_enabled,
+        iframe_srcdoc,
+        drop_doctype,
 
-        atom none;
-        atom some;
-        atom all;
+        none,
+        some,
+        all,
     }
 }
 
@@ -126,20 +125,15 @@ enum ParserType {
     XmlDocument,
 }
 
-fn parse<'a>(parser_type: ParserType, env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
+fn parse<'a>(parser_type: ParserType, env: Env<'a>, document: Binary) -> NifResult<Term<'a>> {
     match panic::catch_unwind(|| {
-        let binary: Binary = match args[0].decode() {
-            Ok(inner) => inner,
-            Err(_) => panic!("argument is not a binary"),
-        };
-
         let sink = FlatDom::default();
 
         let result = match parser_type {
             ParserType::HtmlDocument => {
                 let parser = html5ever::parse_document(sink, Default::default());
 
-                match std::str::from_utf8(binary.as_slice()) {
+                match std::str::from_utf8(document.as_slice()) {
                     Ok(decoded) => parser.one(decoded),
                     Err(_) => panic!("input is not valid utf8"),
                 }
@@ -148,7 +142,7 @@ fn parse<'a>(parser_type: ParserType, env: Env<'a>, args: &[Term<'a>]) -> NifRes
             ParserType::XmlDocument => {
                 let parser = xml5ever::driver::parse_document(sink, Default::default());
 
-                match std::str::from_utf8(binary.as_slice()) {
+                match std::str::from_utf8(document.as_slice()) {
                     Ok(decoded) => parser.one(decoded),
                     Err(_) => panic!("input is not valid utf8"),
                 }
@@ -175,23 +169,18 @@ fn parse<'a>(parser_type: ParserType, env: Env<'a>, args: &[Term<'a>]) -> NifRes
     }
 }
 
-fn parse_html<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
-    parse(ParserType::HtmlDocument, env, args)
+#[rustler::nif(schedule = "DirtyCpu")]
+fn parse_html<'a>(env: Env<'a>, document: Binary) -> NifResult<Term<'a>> {
+    parse(ParserType::HtmlDocument, env, document)
 }
 
-fn parse_xml<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
-    parse(ParserType::XmlDocument, env, args)
+#[rustler::nif(schedule = "DirtyCpu")]
+fn parse_xml<'a>(env: Env<'a>, document: Binary) -> NifResult<Term<'a>> {
+    parse(ParserType::XmlDocument, env, document)
 }
 
-rustler_export_nifs!(
-    "Elixir.MeeseeksHtml5ever.Native",
-    [
-        ("parse_html", 1, parse_html, SchedulerFlags::DirtyCpu),
-        ("parse_xml", 1, parse_xml, SchedulerFlags::DirtyCpu),
-    ],
-    Some(on_load)
-);
+rustler::init!("Elixir.MeeseeksHtml5ever.Native", [parse_html, parse_xml], load = load);
 
-fn on_load<'a>(_env: Env<'a>, _load_info: Term<'a>) -> bool {
+fn load(_env: Env, _load_info: Term) -> bool {
     true
 }
