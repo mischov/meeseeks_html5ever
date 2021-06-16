@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Compatibility
+
+  * Support Elixir 1.12 and Erlang/OTP 24
+  * Suppress warnings on x86_64-apple-darwin
+  * Use Rustler v0.22
+
 ## v0.12.1 (2019-09-09)
 
 ### Enhancements
@@ -8,7 +16,7 @@
 
 ## v0.12.0 (2019-09-08)
 
-### Compatability
+### Compatibility
 
   * No longer support Elixir 1.4, Elixir 1.5, or Erlang/OTP 19 (minumum tested compatiblity is now Elixir 1.6 and Erlang/OTP 20)
   * Support Elixir 1.9 and Erlang/OTP 22

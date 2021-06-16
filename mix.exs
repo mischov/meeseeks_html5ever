@@ -16,21 +16,7 @@ defmodule MeeseeksHtml5ever.Mixfile do
       docs: docs(),
       build_embedded: Mix.env() == :prod,
       start_permanent: Mix.env() == :prod,
-      compilers: [:rustler] ++ Mix.compilers(),
-      rustler_crates: rustler_crates()
-    ]
-  end
-
-  def rustler_crates do
-    [
-      meeseeks_html5ever_nif: [
-        path: "native/meeseeks_html5ever_nif",
-        cargo: :system,
-        default_features: false,
-        features: [],
-        mode: :release
-        # mode: (if Mix.env == :prod, do: :release, else: :debug),
-      ]
+      compilers: Mix.compilers()
     ]
   end
 
@@ -40,7 +26,7 @@ defmodule MeeseeksHtml5ever.Mixfile do
 
   defp deps do
     [
-      {:rustler, "~> 0.21.0"},
+      {:rustler, "~> 0.22.0-rc.1"},
 
       # docs
       {:ex_doc, ex_doc_version(), only: :docs, runtime: false}

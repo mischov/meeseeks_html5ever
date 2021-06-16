@@ -11,7 +11,7 @@ crate-type = ["dylib"]
 [dependencies]
 rustler = "0.21"
 
-html5ever = "0.22"
+html5ever = "0.22.0-rc.1"
 xml5ever = "0.12"
 markup5ever = "0.7"
 tendril = "0.4"

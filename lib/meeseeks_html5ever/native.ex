@@ -1,7 +1,7 @@
 defmodule MeeseeksHtml5ever.Native do
   @moduledoc false
 
-  use Rustler, otp_app: :meeseeks_html5ever, crate: "meeseeks_html5ever_nif"
+  use Rustler, otp_app: :meeseeks_html5ever, crate: :meeseeks_html5ever_nif
 
   defmodule NifNotLoadedError do
     @moduledoc false
