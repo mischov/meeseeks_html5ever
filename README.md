@@ -1,6 +1,5 @@
 # Meeseeks_Html5ever
 
-[![Build Status](https://travis-ci.org/mischov/meeseeks_html5ever.svg?branch=master)](https://travis-ci.org/mischov/meeseeks_html5ever)
 [![MeeseeksHtml5ever version](https://img.shields.io/hexpm/v/meeseeks_html5ever.svg)](https://hex.pm/packages/meeseeks_html5ever)
 
 Originally a fork of Hansihe's [html5ever_elixir](https://github.com/hansihe/html5ever_elixir) that is more tightly coupled with [Meeseeks](https://github.com/mischov/meeseeks), Meeseeks_Html5ever has grown to include additional functionality, such as use of xml5ever for XML parsing.
