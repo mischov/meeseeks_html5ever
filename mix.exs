@@ -47,7 +47,15 @@ defmodule MeeseeksHtml5ever.Mixfile do
     [
       maintainers: ["Mischov"],
       licenses: ["MIT", "Apache-2.0"],
-      files: ["lib", "native", "mix.exs", "README.md", "LICENSE-MIT", "LICENSE-APACHE"],
+      files: [
+        "lib",
+        "native",
+        "priv/.gitkeep",
+        "mix.exs",
+        "README.md",
+        "LICENSE-MIT",
+        "LICENSE-APACHE"
+      ],
       links: %{"GitHub" => "https://github.com/mischov/meeseeks_html5ever"}
     ]
   end
