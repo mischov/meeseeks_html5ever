@@ -1,12 +1,13 @@
 # Meeseeks_Html5ever
 
 [![MeeseeksHtml5ever version](https://img.shields.io/hexpm/v/meeseeks_html5ever.svg)](https://hex.pm/packages/meeseeks_html5ever)
+![tests](https://github.com/mischov/meeseeks_html5ever/workflows/tests/badge.svg)
 
 Originally a fork of Hansihe's [html5ever_elixir](https://github.com/hansihe/html5ever_elixir) that is more tightly coupled with [Meeseeks](https://github.com/mischov/meeseeks), Meeseeks_Html5ever has grown to include additional functionality, such as use of xml5ever for XML parsing.
 
 ## Compatibility
 
-Meeseeks_Html5ever requires a minimum combination of Elixir 1.6.0 and Erlang/OTP 20.0, and is tested with a maximum combination of Elixir 1.12.0 and Erlang/OTP 24.0.
+Meeseeks_Html5ever requires a minimum combination of Elixir 1.7.0 and Erlang/OTP 21.0, and is tested with a maximum combination of Elixir 1.12.0 and Erlang/OTP 24.0.
 
 ## Dependencies
 

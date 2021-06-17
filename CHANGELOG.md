@@ -4,6 +4,7 @@
 
 ### Compatibility
 
+  * No longer support Elixir 1.6 or Erlang/OTP20
   * Support Elixir 1.12 and Erlang/OTP 24
   * Suppress warnings on x86_64-apple-darwin
   * Use Rustler v0.22
