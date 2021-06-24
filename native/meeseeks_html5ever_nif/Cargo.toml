@@ -9,7 +9,7 @@ path = "src/lib.rs"
 crate-type = ["cdylib"]
 
 [dependencies]
-rustler = "0.22.0-rc.1"
+rustler = "0.22"
 
 html5ever = "0.22"
 xml5ever = "0.12"
