@@ -29,12 +29,8 @@ defmodule MeeseeksHtml5ever.Mixfile do
       {:rustler, "~> 0.22.0"},
 
       # docs
-      {:ex_doc, ex_doc_version(), only: :docs, runtime: false}
+      {:ex_doc, "~> 0.21.0", only: :docs, runtime: false}
     ]
-  end
-
-  defp ex_doc_version do
-    if System.version() >= "1.7", do: "~> 0.19.0", else: "~> 0.18.0"
   end
 
   defp description do
