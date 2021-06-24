@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.13.0 (2021-06-24)
+
 ### Compatibility
 
   * No longer support Elixir 1.6 or Erlang/OTP20
