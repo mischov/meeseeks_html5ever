@@ -33,7 +33,7 @@ Contributions are very welcome, especially bug reports.
 
 If submitting a bug report, please search open and closed issues first.
 
-To make a pull request, fork the project, create a topic branch off of `master`, push your topic branch to your fork, and open a pull request.
+To make a pull request, fork the project, create a topic branch off of `main`, push your topic branch to your fork, and open a pull request.
 
 If you're submitting a bug fix, please include a test or tests that would have caught the problem.
 
