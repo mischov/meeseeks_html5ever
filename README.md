@@ -20,7 +20,7 @@ Ensure Rust is installed, then add Meeseeks_Html5ever to your `mix.exs`:
 ```elixir
 def deps do
   [
-    {:meeseeks_html5ever, "~> 0.13.0"}
+    {:meeseeks_html5ever, "~> 0.13.1"}
   ]
 end
 ```
