@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.13.1 (2021-10-20)
+
+### Compatibility
+
+  * Support compilation on Apple M1 devices
+
 ## v0.13.0 (2021-06-24)
 
 ### Compatibility
