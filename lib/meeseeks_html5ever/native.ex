@@ -8,8 +8,8 @@ defmodule MeeseeksHtml5ever.Native do
 
   env_config = Application.get_env(:meeseeks_html5ever, MeeseeksHtml5ever, [])
 
-  # This module will be replaced by the NIF module after
-  # loaded. It throws an error in case the NIF can't be loaded.
+  # This module will be replaced by the NIF module after loaded.
+  # It throws an error in case the NIF can't be loaded.
   use RustlerPrecompiled,
     otp_app: :meeseeks_html5ever,
     crate: "meeseeks_html5ever_nif",
