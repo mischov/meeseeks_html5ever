@@ -174,3 +174,15 @@ jobs:
         files: |
           ${{ steps.rename.outputs.LIB_FINAL_PATH }}
       if: startsWith(github.ref, 'refs/tags/')
+
+  update_checksum:
+    name: Update NIF Checksum
+    needs: build_release
+    runs-on: ubuntu-20.04
+    steps:
+    - name: Update Checksum
+      shell: bash
+      run: |
+        mix deps.get
+        HTML5EVER_BUILD=true mix compile --force
+        mix rustler_precompiled.download MeeseeksHtml5ever.Native --all --ignore-unavailable
