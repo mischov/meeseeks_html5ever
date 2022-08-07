@@ -206,6 +206,9 @@ jobs:
       shell: bash
       run: |
         mix deps.get
+        cd native/meeseeks_html5ever_nif
+        cargo build --quiet
+        cd ../../
         HTML5EVER_BUILD=true mix compile --force
         mix rustler_precompiled.download MeeseeksHtml5ever.Native --all --ignore-unavailable
 
