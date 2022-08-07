@@ -1,22 +1,20 @@
 defmodule MeeseeksHtml5ever.Mixfile do
   use Mix.Project
 
-  @version "0.13.1"
+  @version "0.13.2"
+  @repo_url "https://github.com/un3481/meeseeks_html5ever"
 
   def project do
     [
       app: :meeseeks_html5ever,
       name: "MeeseeksHtml5ever",
       version: @version,
-      description: description(),
-      elixir: "~> 1.7",
+      elixir: "~> 1.11",
+      description: "Meeseeks-specific NIF binding of html5ever using Rustler.",
       deps: deps(),
-      package: package(),
-      source_url: "https://github.com/mischov/meeseeks_html5ever",
       docs: docs(),
-      build_embedded: Mix.env() == :prod,
-      start_permanent: Mix.env() == :prod,
-      compilers: Mix.compilers()
+      package: package(),
+      source_url: @repo_url
     ]
   end
 
@@ -26,17 +24,20 @@ defmodule MeeseeksHtml5ever.Mixfile do
 
   defp deps do
     [
-      {:rustler, "~> 0.22.0"},
-
-      # docs
+      {:rustler_precompiled, "~> 0.4"},
+      {:rustler, ">= 0.0.0", optional: true},
       {:ex_doc, "~> 0.21.0", only: :docs, runtime: false}
     ]
   end
 
-  defp description do
-    """
-    Meeseeks-specific NIF binding of html5ever using Rustler.
-    """
+  defp docs do
+    [
+      main: "MeeseeksHtml5ever",
+      extras: ["CHANGELOG.md"],
+      skip_undefined_reference_warnings_on: ["CHANGELOG.md"],
+      source_ref: "v#{@version}",
+      source_url: @repo_url
+    ]
   end
 
   defp package do
@@ -46,17 +47,15 @@ defmodule MeeseeksHtml5ever.Mixfile do
       files: [
         "lib",
         "native",
+        "checksum-*.exs",
         "priv/.gitkeep",
         "mix.exs",
         "README.md",
-        "LICENSE-MIT",
-        "LICENSE-APACHE"
+        "CHANGELOG.md",
+        "LICENSE-APACHE",
+        "LICENSE-MIT"
       ],
-      links: %{"GitHub" => "https://github.com/mischov/meeseeks_html5ever"}
+      links: %{"GitHub" => @repo_url}
     ]
-  end
-
-  defp docs do
-    [main: "MeeseeksHtml5ever"]
   end
 end
