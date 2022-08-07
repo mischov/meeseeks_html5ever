@@ -1,263 +1,288 @@
-use html5ever::{ QualName, Attribute };
-use html5ever::tree_builder::{ TreeSink, QuirksMode, NodeOrText, ElementFlags };
+use std::borrow::Cow;
+use std::collections::HashSet;
+use std::default::Default;
+
+use html5ever::tree_builder::{ElementFlags, NodeOrText, QuirksMode, TreeSink};
+use html5ever::{Attribute, QualName};
 use markup5ever::ExpandedName;
 
 use tendril::StrTendril;
 
-use std::borrow::Cow;
+use rustler::{Encoder, Env, Term};
 
-use rustler::{ Env, Encoder, Term };
-
-use crate::common::{ STW, QNW };
+use self::NodeEnum::{Comment, Data, Doctype, Document, Element, ProcessingInstruction, Text};
 
 #[derive(Copy, Clone, PartialEq, Debug)]
-pub struct NodeHandle(pub usize);
+pub struct Id(usize);
 
-pub enum PoolOrVec<T> {
-    Pool {
-        head: usize,
-        len: usize,
-    },
-    Vec {
-        vec: Vec<T>,
-    }
+#[derive(Debug)]
+enum Parent {
+    Some(Id),
+    None,
 }
 
-impl<T> PoolOrVec<T> where T: Clone {
-
-    pub fn new(pool: &Vec<T>) -> Self {
-        PoolOrVec::Pool {
-            head: pool.len(),
-            len: 0,
-        }
-    }
-
-    pub fn as_slice<'a>(&'a self, pool: &'a Vec<T>) -> &'a [T] {
-        match self {
-            PoolOrVec::Pool { head, len } => {
-                &pool[*head..(*head + *len)]
-            },
-            PoolOrVec::Vec { vec } => {
-                &*vec
-            },
-        }
-    }
-
-    pub fn push(&mut self, item: T, pool: &mut Vec<T>) {
-        match self {
-            PoolOrVec::Pool { head, len } if pool.len() == *head + *len => {
-                pool.push(item);
-                *len += 1;
-            },
-            val @ PoolOrVec::Pool { .. } => {
-                if let PoolOrVec::Pool { head, len } = val {
-                    let mut vec = pool[*head..(*head + *len)].to_owned();
-                    vec.push(item);
-                    *val = PoolOrVec::Vec {
-                        vec: vec,
-                    };
-                } else {
-                    unreachable!()
-                }
-            },
-            PoolOrVec::Vec { vec } => {
-                vec.push(item);
-            },
-        }
-    }
-
-    pub fn iter<'a>(&'a self, pool: &'a Vec<T>) -> impl Iterator<Item = &'a T> + 'a {
-        self.as_slice(pool).iter()
-    }
-
-    pub fn insert(&mut self, index: usize, item: T, pool: &mut Vec<T>) {
-        match self {
-            PoolOrVec::Pool { head, len } if pool.len() == *head + *len => {
-                pool.insert(*head + index, item);
-                *len += 1;
-            }
-            val @ PoolOrVec::Pool { .. } => {
-                *val = PoolOrVec::Vec {
-                    vec: {
-                        let mut vec = val.as_slice(pool).to_owned();
-                        vec.insert(index, item);
-                        vec
-                    },
-                };
-            },
-            PoolOrVec::Vec { vec } => {
-                vec.insert(index, item);
-            },
-        }
-    }
-
-    pub fn remove(&mut self, index: usize, pool: &mut Vec<T>) {
-        match self {
-            val @ PoolOrVec::Pool { .. } => {
-                *val = PoolOrVec::Vec {
-                    vec: {
-                        let mut vec = val.as_slice(pool).to_owned();
-                        vec.remove(index);
-                        vec
-                    },
-                };
-            },
-            PoolOrVec::Vec { vec } => {
-                vec.remove(index);
-            },
-        }
-    }
-
-}
-
-pub struct Node {
-    id: NodeHandle,
-    children: PoolOrVec<NodeHandle>,
-    parent: Option<NodeHandle>,
-    data: NodeData,
-}
-impl Node {
-    fn new(id: usize, data: NodeData, pool: &Vec<NodeHandle>) -> Self {
-        Node {
-            id: NodeHandle(id),
-            parent: None,
-            children: PoolOrVec::new(pool),
-            data: data,
+impl Parent {
+    fn is_some(&self) -> bool {
+        match *self {
+            Parent::Some(_) => true,
+            Parent::None => false,
         }
     }
 }
 
-#[derive(Debug, PartialEq)]
-pub enum NodeData{
+#[derive(Debug)]
+enum ScriptOrStyle {
+    Script,
+    Style,
+    Neither,
+}
+
+#[derive(Debug)]
+enum DataType {
+    Script,
+    Style,
+    Cdata,
+}
+
+#[derive(Debug)]
+enum NodeEnum {
+    Comment(StrTendril),
+    Data(DataType, StrTendril),
+    Doctype(StrTendril, StrTendril, StrTendril),
     Document,
-    DocType {
-        name: StrTendril,
-        public_id: StrTendril,
-        system_id: StrTendril,
-    },
-    Text {
-        contents: StrTendril,
-    },
-    Comment {
-        contents: StrTendril,
-    },
-    Element {
-        name: QualName,
-        attrs: Vec<Attribute>,
-        template_contents: Option<NodeHandle>,
-        mathml_annotation_xml_integration_point: bool,
-    },
-    ProcessingInstruction {
-        target: StrTendril,
-        contents: StrTendril,
-    },
+    Element(QualName, Vec<Attribute>, bool),
+    ProcessingInstruction(StrTendril, StrTendril),
+    Text(StrTendril),
 }
 
-pub struct FlatSink {
-    pub root: NodeHandle,
-    pub nodes: Vec<Node>,
-    pub pool: Vec<NodeHandle>,
+impl NodeEnum {
+    fn script_or_style(&self) -> ScriptOrStyle {
+        match *self {
+            Element(ref name, ..) => match name.expanded() {
+                expanded_name!(html "script") => ScriptOrStyle::Script,
+                expanded_name!(html "style") => ScriptOrStyle::Style,
+                _ => ScriptOrStyle::Neither,
+            },
+            _ => ScriptOrStyle::Neither,
+        }
+    }
+
+    fn append_text(&mut self, text: &str) -> bool {
+        match *self {
+            Text(ref mut current) | Data(_, ref mut current) => {
+                current.push_slice(text);
+                true
+            }
+            _ => false,
+        }
+    }
 }
 
-impl FlatSink {
+#[derive(Debug)]
+struct Node {
+    parent: Parent,
+    id: Id,
+    children: Vec<Id>,
+    last_string: bool,
+    node: NodeEnum,
+}
 
-    pub fn new() -> FlatSink {
-        let mut sink = FlatSink {
-            root: NodeHandle(0),
-            nodes: Vec::with_capacity(200),
-            pool: Vec::with_capacity(2000),
-        };
-
-        // Element 0 is always root
-        sink.nodes.push(Node::new(0, NodeData::Document, &sink.pool));
-
-        sink
+impl Node {
+    fn new(id: Id, node: NodeEnum) -> Node {
+        Node {
+            parent: Parent::None,
+            id: id,
+            children: vec![],
+            last_string: false,
+            node: node,
+        }
     }
 
-    pub fn node_mut<'a>(&'a mut self, handle: NodeHandle) -> &'a mut Node {
-        &mut self.nodes[handle.0]
+    fn index_of_child(&self, child: Id) -> Option<usize> {
+        self.children.iter().position(|&x| x == child)
     }
-    pub fn node<'a>(&'a self, handle: NodeHandle) -> &'a Node {
-        &self.nodes[handle.0]
+}
+
+#[derive(Debug)]
+pub struct FlatDom {
+    nodes: Vec<Node>,
+}
+
+impl FlatDom {
+    fn node(&self, id: Id) -> &Node {
+        &self.nodes[id.0]
     }
 
-    pub fn make_node(&mut self, data: NodeData) -> NodeHandle {
-        let node = Node::new(self.nodes.len(), data, &self.pool);
-        let id = node.id;
-        self.nodes.push(node);
+    fn node_mut(&mut self, id: Id) -> &mut Node {
+        &mut self.nodes[id.0]
+    }
+
+    fn add_node(&mut self, node: NodeEnum) -> Id {
+        let id = Id(self.nodes.len());
+        self.nodes.push(Node::new(id, node));
         id
     }
-}
 
-fn node_or_text_to_node(sink: &mut FlatSink, not: NodeOrText<NodeHandle>) -> NodeHandle {
-    match not {
-        NodeOrText::AppendNode(handle) => handle,
-        NodeOrText::AppendText(text) => {
-            sink.make_node(NodeData::Text {
-                contents: text,
-            })
-        },
+    fn append_node(&mut self, parent: Id, child: Id) {
+        self.node_mut(child).parent = Parent::Some(parent);
+        let parent_node = self.node_mut(parent);
+        parent_node.children.push(child);
+        parent_node.last_string = false;
+    }
+
+    fn append_text(&mut self, parent: Id, text: StrTendril) {
+        if self.node(parent).last_string {
+            match self.node(parent).children.last() {
+                Some(&child) => self.node_mut(child).node.append_text(&text),
+                _ => unreachable!(),
+            };
+        } else {
+            let child = match self.node(parent).node.script_or_style() {
+                ScriptOrStyle::Script => self.add_node(Data(DataType::Script, text)),
+                ScriptOrStyle::Style => self.add_node(Data(DataType::Style, text)),
+                ScriptOrStyle::Neither => self.add_node(Text(text)),
+            };
+            self.node_mut(child).parent = Parent::Some(parent);
+            let parent_node = self.node_mut(parent);
+            parent_node.children.push(child);
+            parent_node.last_string = true;
+        }
+    }
+
+    fn get_parent_and_index(&self, child: Id) -> Option<(Id, usize)> {
+        let maybe_parent = &self.node(child).parent;
+        match *maybe_parent {
+            Parent::None => None,
+            Parent::Some(parent) => match self.node(parent).index_of_child(child) {
+                Some(i) => Some((parent, i)),
+                None => panic!("have parent but not in parent"),
+            },
+        }
+    }
+
+    fn remove_from_parent(&mut self, child: Id) {
+        if let Some((parent, i)) = self.get_parent_and_index(child) {
+            self.node_mut(parent).children.remove(i);
+            let child = self.node_mut(child);
+            child.parent = Parent::None;
+        }
     }
 }
 
-impl TreeSink for FlatSink {
-    type Output = Self;
-    type Handle = NodeHandle;
+impl Default for FlatDom {
+    fn default() -> FlatDom {
+        FlatDom {
+            nodes: vec![Node::new(Id(0), Document)],
+        }
+    }
+}
+
+impl TreeSink for FlatDom {
+    type Output = FlatDom;
+    type Handle = Id;
 
     fn finish(self) -> Self::Output {
         self
     }
 
-    // TODO: Log this or something
+    // Not supported
     fn parse_error(&mut self, _msg: Cow<'static, str>) {}
-    fn set_quirks_mode(&mut self, _mode: QuirksMode) {}
 
-    fn get_document(&mut self) -> Self::Handle { NodeHandle(0) }
-    fn get_template_contents(&mut self, _target: &Self::Handle) -> Self::Handle {
-        panic!("Templates not supported");
+    fn get_document(&mut self) -> Self::Handle {
+        Id(0)
     }
 
-    fn same_node(&self, x: &Self::Handle, y: &Self::Handle) -> bool { x == y }
-    fn elem_name(&self, target: &Self::Handle) -> ExpandedName {
-        let node = self.node(*target);
-        match node.data {
-            NodeData::Element { ref name, .. } => name.expanded(),
-            _ => unreachable!(),
+    fn get_template_contents(&mut self, target: &Self::Handle) -> Self::Handle {
+        if let Element(_, _, true) = self.node(*target).node {
+            // Use template element as document fragment
+            target.clone()
+        } else {
+            panic!("not a template element!")
         }
     }
 
-    fn create_element(&mut self, name: QualName, attrs: Vec<Attribute>, flags: ElementFlags) -> Self::Handle {
-        let template_contents = if flags.template {
-            Some(self.make_node(NodeData::Document))
-        } else {
-            None
-        };
+    // Not supported
+    fn set_quirks_mode(&mut self, _mode: QuirksMode) {}
 
-        self.make_node(NodeData::Element {
-            name: name,
-            attrs: attrs,
-            mathml_annotation_xml_integration_point: flags.mathml_annotation_xml_integration_point,
-            template_contents: template_contents,
-        })
+    fn same_node(&self, x: &Self::Handle, y: &Self::Handle) -> bool {
+        x == y
+    }
+
+    fn elem_name(&self, target: &Self::Handle) -> ExpandedName {
+        if let Element(ref name, ..) = self.node(*target).node {
+            name.expanded()
+        } else {
+            panic!("not an element!")
+        }
+    }
+
+    fn create_element(
+        &mut self,
+        name: QualName,
+        attrs: Vec<Attribute>,
+        flags: ElementFlags,
+    ) -> Self::Handle {
+        self.add_node(Element(name, attrs, flags.template))
     }
 
     fn create_comment(&mut self, text: StrTendril) -> Self::Handle {
-        self.make_node(NodeData::Comment {
-            contents: text,
-        })
+        if text.starts_with("[CDATA[") && text.ends_with("]]") {
+            let data = StrTendril::from_slice(&text[7..(text.len() - 2)]);
+            self.add_node(Data(DataType::Cdata, data))
+        } else {
+            self.add_node(Comment(text))
+        }
     }
 
-    fn append(&mut self, parent_id: &Self::Handle, child: NodeOrText<Self::Handle>) {
-        let handle = node_or_text_to_node(self, child);
-
-        self.nodes[parent_id.0].children.push(handle, &mut self.pool);
-        self.node_mut(handle).parent = Some(*parent_id);
+    fn create_pi(&mut self, target: StrTendril, data: StrTendril) -> Self::Handle {
+        self.add_node(ProcessingInstruction(target, data))
     }
 
-    fn append_based_on_parent_node(&mut self,
-                                   element: &Self::Handle,
-                                   prev_element: &Self::Handle,
-                                   child: NodeOrText<Self::Handle>) {
+    fn append(&mut self, parent: &Self::Handle, child: NodeOrText<Self::Handle>) {
+        match child {
+            NodeOrText::AppendNode(node) => self.append_node(*parent, node),
+            NodeOrText::AppendText(text) => self.append_text(*parent, text),
+        };
+    }
+
+    fn append_before_sibling(&mut self, sibling: &Self::Handle, child: NodeOrText<Self::Handle>) {
+        let (parent, i) = self
+            .get_parent_and_index(*sibling)
+            .expect("append_before_sibling called on node without parent");
+
+        let child = match (child, i) {
+            // No previous node
+            (NodeOrText::AppendText(text), 0) => self.add_node(Text(text)),
+
+            // Check for text node before insertion point, append if there is
+            (NodeOrText::AppendText(text), i) => {
+                let prev = self.node(parent).children[i - 1];
+                if self.node_mut(prev).node.append_text(&text) {
+                    return;
+                }
+                self.add_node(Text(text))
+            }
+
+            // Tree builder promises no text no *after* insertion point
+
+            // Any other kind of node
+            (NodeOrText::AppendNode(node), _) => node,
+        };
+
+        if self.node(child).parent.is_some() {
+            self.remove_from_parent(child);
+        }
+
+        self.node_mut(child).parent = Parent::Some(parent);
+        self.node_mut(parent).children.insert(i, child);
+    }
+
+    fn append_based_on_parent_node(
+        &mut self,
+        element: &Self::Handle,
+        prev_element: &Self::Handle,
+        child: NodeOrText<Self::Handle>,
+    ) {
         let has_parent = self.node(*element).parent.is_some();
         if has_parent {
             self.append_before_sibling(element, child);
@@ -266,152 +291,328 @@ impl TreeSink for FlatSink {
         }
     }
 
-    fn append_before_sibling(&mut self, sibling: &Self::Handle, new_node: NodeOrText<Self::Handle>) {
-        let new_node_handle = node_or_text_to_node(self, new_node);
-
-        let parent = self.node(*sibling).parent.unwrap();
-        let parent_node = &mut self.nodes[parent.0];
-        let sibling_index = parent_node.children.iter(&self.pool).enumerate()
-            .find(|&(_, node)| node == sibling).unwrap().0;
-        parent_node.children.insert(sibling_index, new_node_handle, &mut self.pool);
+    fn append_doctype_to_document(
+        &mut self,
+        name: StrTendril,
+        public_id: StrTendril,
+        system_id: StrTendril,
+    ) {
+        let doctype = self.add_node(Doctype(name, public_id, system_id));
+        self.append_node(Id(0), doctype);
     }
 
-    fn append_doctype_to_document(&mut self, name: StrTendril, public_id: StrTendril, system_id: StrTendril) {
-        let doctype = self.make_node(NodeData::DocType {
-            name: name,
-            public_id: public_id,
-            system_id: system_id,
-        });
-        let root = self.root;
-        self.nodes[root.0].children.push(doctype, &mut self.pool);
-        self.node_mut(doctype).parent = Some(self.root);
-    }
+    fn add_attrs_if_missing(&mut self, target: &Self::Handle, attrs: Vec<Attribute>) {
+        let target_node = self.node_mut(*target);
+        let target_attrs = if let Element(_, ref mut attrs, ..) = target_node.node {
+            attrs
+        } else {
+            panic!("not an element")
+        };
 
-    fn add_attrs_if_missing(&mut self, target_handle: &Self::Handle, mut add_attrs: Vec<Attribute>) {
-        let target = self.node_mut(*target_handle);
-        match target.data {
-            NodeData::Element { ref mut attrs, .. } => {
-                for attr in add_attrs.drain(..) {
-                    if attrs.iter().find(|a| attr.name == a.name) == None {
-                        attrs.push(attr);
-                    }
-                }
-            }
-            _ => unreachable!(),
-        }
+        let existing_names = target_attrs
+            .iter()
+            .map(|e| e.name.clone())
+            .collect::<HashSet<_>>();
+        target_attrs.extend(
+            attrs
+                .into_iter()
+                .filter(|attr| !existing_names.contains(&attr.name)),
+        );
     }
 
     fn remove_from_parent(&mut self, target: &Self::Handle) {
-        let parent = self.node(*target).parent.unwrap();
-        let parent_node = &mut self.nodes[parent.0];
-        let sibling_index = parent_node.children.iter(&self.pool).enumerate()
-            .find(|&(_, node)| node == target).unwrap().0;
-        parent_node.children.remove(sibling_index, &mut self.pool);
+        self.remove_from_parent(*target);
     }
 
     fn reparent_children(&mut self, node: &Self::Handle, new_parent: &Self::Handle) {
-        let old_children = self.node(*node).children.as_slice(&self.pool).to_owned();
-        for child in &old_children {
-            self.node_mut(*child).parent = Some(*new_parent);
-        }
-        let new_node = &mut self.nodes[new_parent.0];
-        for child in old_children {
-            new_node.children.push(child, &mut self.pool);
+        let children = self.node(*node).children.clone();
+        for child in &children {
+            self.remove_from_parent(*child);
+            self.append_node(*new_parent, *child);
         }
     }
-
-    fn mark_script_already_started(&mut self, _elem: &Self::Handle) {
-        panic!("unsupported");
-    }
-
-    //fn has_parent_node(&self, handle: &Self::Handle) -> bool {
-    //    self.node(*handle).parent.is_some()
-    //}
-
-    fn create_pi(&mut self, target: StrTendril, data: StrTendril) -> Self::Handle {
-        self.make_node(NodeData::ProcessingInstruction {
-            target: target,
-            contents: data,
-        })
-    }
-
 }
 
-impl Encoder for NodeHandle {
+// NIF Encoding
+
+mod atoms {
+    atoms! {
+        nil,
+
+        parent,
+        id,
+        content,
+        name,
+        public,
+        system,
+        namespace,
+        tag,
+        attributes,
+        children,
+        target,
+        data,
+
+        type_ = "type",
+        script,
+        style,
+        cdata,
+
+        id_counter,
+        roots,
+        nodes,
+
+        __struct__,
+        document = "Elixir.Meeseeks.Document",
+        document_comment = "Elixir.Meeseeks.Document.Comment",
+        document_data = "Elixir.Meeseeks.Document.Data",
+        document_doctype = "Elixir.Meeseeks.Document.Doctype",
+        document_element = "Elixir.Meeseeks.Document.Element",
+        document_pi = "Elixir.Meeseeks.Document.ProcessingInstruction",
+        document_text = "Elixir.Meeseeks.Document.Text",
+    }
+}
+
+// QualName and StrTendril
+
+// Zero-cost wrapper types which makes it possible to implement
+// Encoder for these externally defined types.
+// Unsure if this is a great way of doing it, but it's the way
+// that produced the cleanest and least noisy code.
+
+struct QNW<'a>(&'a QualName);
+
+impl<'b> Encoder for QNW<'b> {
+    fn encode<'a>(&self, env: Env<'a>) -> Term<'a> {
+        let local: &str = &*self.0.local;
+        local.encode(env)
+    }
+}
+
+struct STW<'a>(&'a StrTendril);
+
+impl<'b> Encoder for STW<'b> {
+    fn encode<'a>(&self, env: Env<'a>) -> Term<'a> {
+        let data: &str = &*self.0;
+        data.encode(env)
+    }
+}
+
+// Id
+
+impl Encoder for Id {
     fn encode<'a>(&self, env: Env<'a>) -> Term<'a> {
         self.0.encode(env)
     }
 }
 
-fn encode_node<'a>(node: &Node, env: Env<'a>, pool: &Vec<NodeHandle>) -> Term<'a> {
-    let map = ::rustler::types::map::map_new(env)
-        .map_put(self::atoms::id().encode(env), node.id.encode(env)).ok().unwrap()
-        .map_put(self::atoms::parent().encode(env), match node.parent {
-            Some(handle) => handle.encode(env),
-            None => self::atoms::nil().encode(env),
-        }).ok().unwrap();
+// Parent
 
-    match node.data {
-        NodeData::Document => {
-            map
-                .map_put(self::atoms::type_().encode(env), self::atoms::document().encode(env)).ok().unwrap()
+impl Encoder for Parent {
+    fn encode<'a>(&self, env: Env<'a>) -> Term<'a> {
+        match *self {
+            Parent::None => atoms::nil().encode(env),
+            Parent::Some(id) => {
+                if id == Id(0) {
+                    atoms::nil().encode(env)
+                } else {
+                    id.encode(env)
+                }
+            }
         }
-        NodeData::Element { ref attrs, ref name, .. } => {
-            map
-                .map_put(self::atoms::type_().encode(env), self::atoms::element().encode(env)).ok().unwrap()
-                .map_put(self::atoms::children().encode(env), node.children.as_slice(pool).encode(env)).ok().unwrap()
-                .map_put(self::atoms::name().encode(env), QNW(name).encode(env)).ok().unwrap()
-                .map_put(self::atoms::attrs().encode(env), attrs.iter().map(|attr| {
-                    (QNW(&attr.name), STW(&attr.value))
-                }).collect::<Vec<_>>().encode(env)).ok().unwrap()
-        }
-        NodeData::Text { ref contents } => {
-            map
-                .map_put(self::atoms::type_().encode(env), self::atoms::text().encode(env)).ok().unwrap()
-                .map_put(self::atoms::contents().encode(env), STW(contents).encode(env)).ok().unwrap()
-        }
-        NodeData::DocType { .. } => {
-            map
-                .map_put(self::atoms::type_().encode(env), self::atoms::doctype().encode(env)).ok().unwrap()
-        }
-        NodeData::Comment { ref contents } => {
-            map
-                .map_put(self::atoms::type_().encode(env), self::atoms::comment().encode(env)).ok().unwrap()
-                .map_put(self::atoms::contents().encode(env), STW(contents).encode(env)).ok().unwrap()
-        }
-        _ => unimplemented!(),
     }
 }
 
-mod atoms {
-    rustler::atoms! {
-        nil,
+// DataType
 
-        type_ = "type",
-        document,
-        element,
-        text,
-        doctype,
-        comment,
-
-        name,
-        nodes,
-        root,
-        id,
-        parent,
-        children,
-        contents,
-        attrs,
+impl Encoder for DataType {
+    fn encode<'a>(&self, env: Env<'a>) -> Term<'a> {
+        match *self {
+            DataType::Script => atoms::script().encode(env),
+            DataType::Style => atoms::style().encode(env),
+            DataType::Cdata => atoms::cdata().encode(env),
+        }
     }
 }
 
-pub fn flat_sink_to_flat_term<'a>(env: Env<'a>, sink: &FlatSink) -> Term<'a> {
-    let nodes = sink.nodes.iter()
-        .fold(rustler::types::map::map_new(env), |acc, node| {
-            acc.map_put(node.id.encode(env), encode_node(node, env, &sink.pool)).ok().unwrap()
-        });
+// Node
 
-    ::rustler::types::map::map_new(env)
-        .map_put(self::atoms::nodes().encode(env), nodes).ok().unwrap()
-        .map_put(self::atoms::root().encode(env), sink.root.encode(env)).ok().unwrap()
+fn split_ns_and_tag(ns_tag: &str) -> (&str, &str) {
+    let first_colon = ns_tag.find(':').unwrap_or_else(|| ns_tag.len());
+    match ns_tag.split_at(first_colon) {
+        (tag, "") => ("", tag),
+        (ns, tag) => (ns, &tag[1..]),
+    }
+}
+
+fn ns_and_tag(name: &QualName) -> (&str, &str) {
+    match name.prefix {
+        // When parsing with xml5ever, the prefix in `prefix:tag` ends up
+        // in the prefix.
+        Some(ref prefix) => {
+            let ns: &str = prefix;
+            let tag: &str = &name.local;
+            (ns, tag)
+        }
+        // When parsing with html5ever, the prefix in `prefix:tag` ends up
+        // in the local name and needs to be split out.
+        None => {
+            let ns_tag: &str = &name.local;
+            split_ns_and_tag(ns_tag)
+        }
+    }
+}
+
+impl Encoder for Node {
+    fn encode<'a>(&self, env: Env<'a>) -> Term<'a> {
+        let struct_atom = atoms::__struct__().encode(env);
+        let parent_atom = atoms::parent().encode(env);
+        let id_atom = atoms::id().encode(env);
+
+        match self.node {
+            Comment(ref content) => {
+                let document_comment_atom = atoms::document_comment().encode(env);
+                let content_atom = atoms::content().encode(env);
+                let keys = vec![struct_atom, parent_atom, id_atom, content_atom];
+                let values = vec![
+                    document_comment_atom,
+                    self.parent.encode(env),
+                    self.id.encode(env),
+                    STW(content).encode(env),
+                ];
+                Term::map_from_arrays(env, &keys, &values).ok().unwrap()
+            }
+
+            Data(ref data_type, ref content) => {
+                let document_data_atom = atoms::document_data().encode(env);
+                let type_atom = atoms::type_().encode(env);
+                let content_atom = atoms::content().encode(env);
+                let keys = vec![struct_atom, parent_atom, id_atom, type_atom, content_atom];
+                let values = vec![
+                    document_data_atom,
+                    self.parent.encode(env),
+                    self.id.encode(env),
+                    data_type.encode(env),
+                    STW(content).encode(env),
+                ];
+                Term::map_from_arrays(env, &keys, &values).ok().unwrap()
+            }
+
+            Doctype(ref name, ref public, ref system) => {
+                let document_doctype_atom = atoms::document_doctype().encode(env);
+                let name_atom = atoms::name().encode(env);
+                let public_atom = atoms::public().encode(env);
+                let system_atom = atoms::system().encode(env);
+                let keys = vec![
+                    struct_atom,
+                    parent_atom,
+                    id_atom,
+                    name_atom,
+                    public_atom,
+                    system_atom,
+                ];
+                let values = vec![
+                    document_doctype_atom,
+                    self.parent.encode(env),
+                    self.id.encode(env),
+                    STW(name).encode(env),
+                    STW(public).encode(env),
+                    STW(system).encode(env),
+                ];
+                Term::map_from_arrays(env, &keys, &values).ok().unwrap()
+            }
+
+            Document => unreachable!(),
+
+            Element(ref name, ref attributes, ref _template) => {
+                let document_element_atom = atoms::document_element().encode(env);
+                let namespace_atom = atoms::namespace().encode(env);
+                let tag_atom = atoms::tag().encode(env);
+                let attributes_atom = atoms::attributes().encode(env);
+                let children_atom = atoms::children().encode(env);
+                let (namespace, tag) = ns_and_tag(&name);
+                let attribute_terms: Vec<Term<'a>> = attributes
+                    .iter()
+                    .map(|a| (QNW(&a.name), STW(&a.value)).encode(env))
+                    .collect();
+                let keys = vec![
+                    struct_atom,
+                    parent_atom,
+                    id_atom,
+                    namespace_atom,
+                    tag_atom,
+                    attributes_atom,
+                    children_atom,
+                ];
+                let values = vec![
+                    document_element_atom,
+                    self.parent.encode(env),
+                    self.id.encode(env),
+                    namespace.encode(env),
+                    tag.encode(env),
+                    attribute_terms.encode(env),
+                    self.children.encode(env),
+                ];
+                Term::map_from_arrays(env, &keys, &values).ok().unwrap()
+            }
+
+            ProcessingInstruction(ref target, ref data) => {
+                let document_pi_atom = atoms::document_pi().encode(env);
+                let target_atom = atoms::target().encode(env);
+                let data_atom = atoms::data().encode(env);
+                let keys = vec![struct_atom, parent_atom, id_atom, target_atom, data_atom];
+                let values = vec![
+                    document_pi_atom,
+                    self.parent.encode(env),
+                    self.id.encode(env),
+                    STW(target).encode(env),
+                    STW(data).encode(env),
+                ];
+                Term::map_from_arrays(env, &keys, &values).ok().unwrap()
+            }
+
+            Text(ref content) => {
+                let document_text_atom = atoms::document_text().encode(env);
+                let content_atom = atoms::content().encode(env);
+                let keys = vec![struct_atom, parent_atom, id_atom, content_atom];
+                let values = vec![
+                    document_text_atom,
+                    self.parent.encode(env),
+                    self.id.encode(env),
+                    STW(content).encode(env),
+                ];
+                Term::map_from_arrays(env, &keys, &values).ok().unwrap()
+            }
+        }
+    }
+}
+
+// FlatDom
+
+impl Encoder for FlatDom {
+    fn encode<'a>(&self, env: Env<'a>) -> Term<'a> {
+        let struct_atom = atoms::__struct__().encode(env);
+        let document_atom = atoms::document().encode(env);
+        let id_counter_atom = atoms::id_counter().encode(env);
+        let roots_atom = atoms::roots().encode(env);
+        let nodes_atom = atoms::nodes().encode(env);
+        let id_counter = self.nodes.len() - 1;
+        let roots = &self.nodes[0].children;
+        let (node_keys, node_values): (Vec<_>, Vec<_>) = self
+            .nodes
+            .iter()
+            .skip(1)
+            .map(|n| (n.id.encode(env), n.encode(env)))
+            .unzip();
+        let nodes_term = Term::map_from_arrays(env, &node_keys, &node_values)
+            .ok()
+            .unwrap();
+        let keys = vec![struct_atom, id_counter_atom, roots_atom, nodes_atom];
+        let values = vec![
+            document_atom,
+            id_counter.encode(env),
+            roots.encode(env),
+            nodes_term,
+        ];
+        Term::map_from_arrays(env, &keys, &values).ok().unwrap()
+    }
 }
