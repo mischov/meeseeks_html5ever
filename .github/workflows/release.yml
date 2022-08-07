@@ -175,26 +175,26 @@ jobs:
           ${{ steps.rename.outputs.LIB_FINAL_PATH }}
       if: startsWith(github.ref, 'refs/tags/')
 
-  update_checksum:
-    name: Update NIF Checksum
-    needs: build_release
-    runs-on: ubuntu-20.04
-    steps:
-    - uses: actions/checkout@v2
-
-    - name: Update Checksum
-      shell: bash
-      run: |
-        mix deps.get
-        HTML5EVER_BUILD=true mix compile --force
-        mix rustler_precompiled.download MeeseeksHtml5ever.Native --all --ignore-unavailable
-
-    - name: Extract crate version
-      shell: bash
-      run: echo "PROJECT_VERSION=$(sed -n 's/^  @version "\(.*\)"/\1/p' ../../mix.exs | head -n1)" >> $GITHUB_ENV
-
-    - name: Checkout source code
-      uses: EndBug/add-and-commit@v9
-      with:
-        pull: --rebase --autostash
-        tag: v${PROJECT_VERSION} --force
+#  update_checksum:
+#    name: Update NIF Checksum
+#    needs: build_release
+#    runs-on: ubuntu-20.04
+#    steps:
+#    - uses: actions/checkout@v2
+#
+#    - name: Update Checksum
+#      shell: bash
+#      run: |
+#        mix deps.get
+#        HTML5EVER_BUILD=true mix compile --force
+#        mix rustler_precompiled.download MeeseeksHtml5ever.Native --all --ignore-unavailable
+#
+#    - name: Extract crate version
+#      shell: bash
+#      run: echo "PROJECT_VERSION=$(sed -n 's/^  @version "\(.*\)"/\1/p' ../../mix.exs | head -n1)" >> $GITHUB_ENV
+#
+#    - name: Checkout source code
+#      uses: EndBug/add-and-commit@v9
+#      with:
+#        pull: --rebase --autostash
+#        tag: v${PROJECT_VERSION} --force
