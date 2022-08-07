@@ -186,3 +186,12 @@ jobs:
         mix deps.get
         HTML5EVER_BUILD=true mix compile --force
         mix rustler_precompiled.download MeeseeksHtml5ever.Native --all --ignore-unavailable
+
+    - name: Extract crate version
+      shell: bash
+      run: echo "PROJECT_VERSION=$(sed -n 's/^  @version "\(.*\)"/\1/p' ../../mix.exs | head -n1)" >> $GITHUB_ENV
+
+    - name: Checkout source code
+      uses: actions/checkout@v2
+      with: 
+        tag: v${PROJECT_VERSION} --force
