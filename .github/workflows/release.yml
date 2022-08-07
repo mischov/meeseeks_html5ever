@@ -180,6 +180,8 @@ jobs:
     needs: build_release
     runs-on: ubuntu-20.04
     steps:
+    - uses: actions/checkout@v1
+
     - name: Update Checksum
       shell: bash
       run: |
@@ -192,6 +194,7 @@ jobs:
       run: echo "PROJECT_VERSION=$(sed -n 's/^  @version "\(.*\)"/\1/p' ../../mix.exs | head -n1)" >> $GITHUB_ENV
 
     - name: Checkout source code
-      uses: actions/checkout@v2
-      with: 
+      uses: EndBug/add-and-commit@v9
+      with:
+        pull: --rebase --autostash
         tag: v${PROJECT_VERSION} --force
