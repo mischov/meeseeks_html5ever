@@ -1,11 +1,3 @@
-#[macro_use]
-extern crate rustler;
-extern crate html5ever;
-extern crate xml5ever;
-#[macro_use]
-extern crate markup5ever;
-extern crate tendril;
-
 use std::panic;
 
 mod flat_dom;
@@ -28,7 +20,7 @@ use tendril::TendrilSink;
 // If using term_to_configs, remove this mod atoms and use commented
 
 mod atoms {
-    atoms! {
+    rustler::atoms! {
         html5ever_nif_result,
 
         ok,
@@ -46,7 +38,7 @@ use html5ever::tree_builder::TreeBuilderOpts;
 use html5ever::tree_builder::interface::QuirksMode;
 
 mod atoms {
-    atoms! {
+    rustler::atoms! {
         html5ever_nif_result,
 
         ok,
@@ -179,7 +171,11 @@ fn parse_xml<'a>(env: Env<'a>, document: Binary) -> NifResult<Term<'a>> {
     parse(ParserType::XmlDocument, env, document)
 }
 
-rustler::init!("Elixir.MeeseeksHtml5ever.Native", [parse_html, parse_xml], load = load);
+rustler::init!(
+    "Elixir.MeeseeksHtml5ever.Native",
+    [parse_html, parse_xml],
+    load = load
+);
 
 fn load(_env: Env, _load_info: Term) -> bool {
     true

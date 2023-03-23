@@ -9,7 +9,7 @@ defmodule MeeseeksHtml5ever.Mixfile do
       name: "MeeseeksHtml5ever",
       version: @version,
       description: description(),
-      elixir: "~> 1.7",
+      elixir: "~> 1.12",
       deps: deps(),
       package: package(),
       source_url: "https://github.com/mischov/meeseeks_html5ever",
@@ -26,7 +26,7 @@ defmodule MeeseeksHtml5ever.Mixfile do
 
   defp deps do
     [
-      {:rustler, "~> 0.22.0"},
+      {:rustler, "~> 0.27.0"},
 
       # docs
       {:ex_doc, "~> 0.21.0", only: :docs, runtime: false}
