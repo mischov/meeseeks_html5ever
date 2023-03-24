@@ -4,7 +4,9 @@ use std::default::Default;
 
 use html5ever::tree_builder::{ElementFlags, NodeOrText, QuirksMode, TreeSink};
 use html5ever::{Attribute, QualName};
+
 use markup5ever::ExpandedName;
+use markup5ever::{local_name, namespace_url, ns};
 
 use tendril::StrTendril;
 
@@ -59,8 +61,8 @@ impl NodeEnum {
     fn script_or_style(&self) -> ScriptOrStyle {
         match *self {
             Element(ref name, ..) => match name.expanded() {
-                expanded_name!(html "script") => ScriptOrStyle::Script,
-                expanded_name!(html "style") => ScriptOrStyle::Style,
+                markup5ever::expanded_name!(html "script") => ScriptOrStyle::Script,
+                markup5ever::expanded_name!(html "style") => ScriptOrStyle::Style,
                 _ => ScriptOrStyle::Neither,
             },
             _ => ScriptOrStyle::Neither,
@@ -91,10 +93,10 @@ impl Node {
     fn new(id: Id, node: NodeEnum) -> Node {
         Node {
             parent: Parent::None,
-            id: id,
+            id,
             children: vec![],
             last_string: false,
-            node: node,
+            node,
         }
     }
 
@@ -195,7 +197,7 @@ impl TreeSink for FlatDom {
     fn get_template_contents(&mut self, target: &Self::Handle) -> Self::Handle {
         if let Element(_, _, true) = self.node(*target).node {
             // Use template element as document fragment
-            target.clone()
+            *target
         } else {
             panic!("not a template element!")
         }
@@ -336,7 +338,7 @@ impl TreeSink for FlatDom {
 // NIF Encoding
 
 mod atoms {
-    atoms! {
+    rustler::atoms! {
         nil,
 
         parent,
@@ -379,20 +381,20 @@ mod atoms {
 // Unsure if this is a great way of doing it, but it's the way
 // that produced the cleanest and least noisy code.
 
-struct QNW<'a>(&'a QualName);
+struct Qnw<'a>(&'a QualName);
 
-impl<'b> Encoder for QNW<'b> {
+impl<'b> Encoder for Qnw<'b> {
     fn encode<'a>(&self, env: Env<'a>) -> Term<'a> {
-        let local: &str = &*self.0.local;
+        let local: &str = &self.0.local;
         local.encode(env)
     }
 }
 
-struct STW<'a>(&'a StrTendril);
+struct Stw<'a>(&'a StrTendril);
 
-impl<'b> Encoder for STW<'b> {
+impl<'b> Encoder for Stw<'b> {
     fn encode<'a>(&self, env: Env<'a>) -> Term<'a> {
-        let data: &str = &*self.0;
+        let data: &str = self.0;
         data.encode(env)
     }
 }
@@ -437,7 +439,7 @@ impl Encoder for DataType {
 // Node
 
 fn split_ns_and_tag(ns_tag: &str) -> (&str, &str) {
-    let first_colon = ns_tag.find(':').unwrap_or_else(|| ns_tag.len());
+    let first_colon = ns_tag.find(':').unwrap_or(ns_tag.len());
     match ns_tag.split_at(first_colon) {
         (tag, "") => ("", tag),
         (ns, tag) => (ns, &tag[1..]),
@@ -477,7 +479,7 @@ impl Encoder for Node {
                     document_comment_atom,
                     self.parent.encode(env),
                     self.id.encode(env),
-                    STW(content).encode(env),
+                    Stw(content).encode(env),
                 ];
                 Term::map_from_arrays(env, &keys, &values).ok().unwrap()
             }
@@ -492,7 +494,7 @@ impl Encoder for Node {
                     self.parent.encode(env),
                     self.id.encode(env),
                     data_type.encode(env),
-                    STW(content).encode(env),
+                    Stw(content).encode(env),
                 ];
                 Term::map_from_arrays(env, &keys, &values).ok().unwrap()
             }
@@ -514,9 +516,9 @@ impl Encoder for Node {
                     document_doctype_atom,
                     self.parent.encode(env),
                     self.id.encode(env),
-                    STW(name).encode(env),
-                    STW(public).encode(env),
-                    STW(system).encode(env),
+                    Stw(name).encode(env),
+                    Stw(public).encode(env),
+                    Stw(system).encode(env),
                 ];
                 Term::map_from_arrays(env, &keys, &values).ok().unwrap()
             }
@@ -529,10 +531,10 @@ impl Encoder for Node {
                 let tag_atom = atoms::tag().encode(env);
                 let attributes_atom = atoms::attributes().encode(env);
                 let children_atom = atoms::children().encode(env);
-                let (namespace, tag) = ns_and_tag(&name);
+                let (namespace, tag) = ns_and_tag(name);
                 let attribute_terms: Vec<Term<'a>> = attributes
                     .iter()
-                    .map(|a| (QNW(&a.name), STW(&a.value)).encode(env))
+                    .map(|a| (Qnw(&a.name), Stw(&a.value)).encode(env))
                     .collect();
                 let keys = vec![
                     struct_atom,
@@ -564,8 +566,8 @@ impl Encoder for Node {
                     document_pi_atom,
                     self.parent.encode(env),
                     self.id.encode(env),
-                    STW(target).encode(env),
-                    STW(data).encode(env),
+                    Stw(target).encode(env),
+                    Stw(data).encode(env),
                 ];
                 Term::map_from_arrays(env, &keys, &values).ok().unwrap()
             }
@@ -578,7 +580,7 @@ impl Encoder for Node {
                     document_text_atom,
                     self.parent.encode(env),
                     self.id.encode(env),
-                    STW(content).encode(env),
+                    Stw(content).encode(env),
                 ];
                 Term::map_from_arrays(env, &keys, &values).ok().unwrap()
             }

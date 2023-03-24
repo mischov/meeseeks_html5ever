@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+### Compatibility
+
+  * No longer support Elixir versions under 1.12 or Erlang/OTP versions under 23.0
+  * Support Elixir 1.13 and 1.14 and Erlang/OTP 25.0
+  * Use Rustler v0.27
+
+### Enhancements
+
+  * Use Rust 2018 edition
+  * Update to latest versions of `html5ever`, `xml5ever`, and `rustler`
+
+### Fixes
+
+  * Fix Rust formatting and clippy issues
+
 ## v0.13.1 (2021-10-20)
 
 ### Compatibility

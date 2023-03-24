@@ -1,4 +1,4 @@
-use Mix.Config
+import Config
 
 config :meeseeks_html5ever, MeeseeksHtml5ever.Native,
   path: "native/meeseeks_html5ever_nif",
