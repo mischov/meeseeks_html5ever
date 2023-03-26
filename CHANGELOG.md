@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.14.1 (2023-03-26)
+
+### Fixes
+
+  * Add missing NIF target 2.14
+
 ## v0.14.0 (2023-03-26)
 
 ### Compatibility
