@@ -10,9 +10,10 @@ In order to release a new version to Hex.pm we first need to:
 1. Tag main with `git tag <version>`
 1. Push tag with `git push origin <version>`
 1. Wait for the CI to build all release files
-1. Run `mix rustler.download MeeseeksHtml5ever.Native --all --print`
+1. Run `mix rustler_precompiled.download MeeseeksHtml5ever.Native --all --print`
 1. Copy the output of the mix task and add to the release notes
-1. Run `mix hex.publish` and **make sure the checksum file is present**
+1. Run `MIX_ENV=docs mix docs`
+1. Run `MIX_ENV=docs mix hex.publish` and **make sure the checksum file is present**
 in the list of files to be published.
 
 It's important to ensure that we publish the checksum file with the
