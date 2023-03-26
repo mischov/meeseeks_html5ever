@@ -1,7 +1,20 @@
 defmodule MeeseeksHtml5ever.Native do
   @moduledoc false
 
-  use Rustler, otp_app: :meeseeks_html5ever, crate: :meeseeks_html5ever_nif, mode: :release
+  mix_config = Mix.Project.config()
+  version = mix_config[:version]
+  github_url = mix_config[:package][:links]["GitHub"]
+  env_config = Application.compile_env(:meeseeks_html5ever, MeeseeksHtml5ever, [])
+
+  use RustlerPrecompiled,
+    otp_app: :meeseeks_html5ever,
+    crate: "meeseeks_html5ever_nif",
+    mode: :release,
+    base_url: "#{github_url}/releases/download/v#{version}",
+    force_build:
+      System.get_env("MEESEEKS_HTML5EVER_BUILD") in ["1", "true"] or
+        env_config[:build_from_source],
+    version: version
 
   def parse_html(_binary), do: err()
   def parse_xml(_binary), do: err()

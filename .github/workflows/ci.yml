@@ -36,6 +36,7 @@ jobs:
 
     env:
       MIX_ENV: test
+      MEESEEKS_HTML5EVER_BUILD: "1"
 
     strategy:
       fail-fast: false
