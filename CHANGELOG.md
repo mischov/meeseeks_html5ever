@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.14.3 (2023-03-27)
+
+### Fixes
+
+  * Add `RUSTLER_NIF_VERSION` to release workflow
+
 ## v0.14.2 (2023-03-26)
 
 ### Fixes
