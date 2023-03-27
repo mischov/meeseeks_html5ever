@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.14.2 (2023-03-26)
+
+### Fixes
+
+  * Undo adding NIF version 2.14 and make other minor adjustments to the `rustler_precompiled` settings
+
 ## v0.14.1 (2023-03-26)
 
 ### Fixes
