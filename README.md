@@ -16,7 +16,7 @@ Ensure Rust is installed, then add Meeseeks_Html5ever to your `mix.exs`:
 ```elixir
 def deps do
   [
-    {:meeseeks_html5ever, "~> 0.14.2"}
+    {:meeseeks_html5ever, "~> 0.14.3"}
   ]
 end
 ```
@@ -40,7 +40,7 @@ If you want to force compilation you will need to have the Rust compiler [instal
 ```elixir
 def deps do
   [
-    {:meeseeks_html5ever, "~> 0.14.2"},
+    {:meeseeks_html5ever, "~> 0.14.3"},
     {:rustler, ">= 0.0.0", optional: true}
   ]
 end
