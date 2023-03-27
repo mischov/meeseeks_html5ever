@@ -5,13 +5,8 @@ on:
     branches:
       # Run for pushes to main
       - main
-    paths:
-      # If files in "native/" change
-      - "native/**"
-      # Or if this file changes
-      - ".github/workflows/release.yml"
     tags:
-      # Or run for any tag
+      # Or run for any pushed tag
       - "**"
 
 jobs:
@@ -21,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        nif: ["2.14", "2.15", "2.16"]
+        nif: ["2.16", 2.15"]
         job:
           - { target: arm-unknown-linux-gnueabihf , os: ubuntu-20.04 , use-cross: true }
           - { target: aarch64-unknown-linux-gnu   , os: ubuntu-20.04 , use-cross: true }

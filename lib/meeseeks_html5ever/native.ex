@@ -14,6 +14,8 @@ defmodule MeeseeksHtml5ever.Native do
     force_build:
       System.get_env("MEESEEKS_HTML5EVER_BUILD") in ["1", "true"] or
         env_config[:build_from_source],
+    targets:
+      Enum.uniq(["aarch64-unknown-linux-musl" | RustlerPrecompiled.Config.default_targets()]),
     version: version
 
   def parse_html(_binary), do: err()
