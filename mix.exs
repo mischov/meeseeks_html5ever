@@ -9,7 +9,7 @@ defmodule MeeseeksHtml5ever.Mixfile do
     [
       app: :meeseeks_html5ever,
       version: @version,
-      elixir: "~> 1.12",
+      elixir: "~> 1.15",
       deps: deps(),
 
       # Hex
