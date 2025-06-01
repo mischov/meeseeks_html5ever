@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+## v0.15.0 (2025-06-01)
+
+### Compatibility
+
+  * No longer support Elixir versions under 1.16 ir Elixir/OTP versions under 26
+  * Support Elixir 1.16, 1.17 and 1.18 as well as Erlang/OTP 26 and 27
+
+### Fixes
+
+  * Upgrade old, invalid actions in workflows
+  * Update compilation targets in release workflow
+  * Fix rustler precompilation issue relating to NIF versions
+
 ## v0.14.3 (2023-03-27)
 
 ### Fixes
