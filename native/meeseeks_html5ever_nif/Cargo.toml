@@ -18,3 +18,8 @@ markup5ever = "0.11"
 
 tendril = "0.4"
 lazy_static = "1.4"
+
+[features]
+default = ["nif_version_2_15"]
+nif_version_2_15 = ["rustler/nif_version_2_15"]
+nif_version_2_16 = ["rustler/nif_version_2_16"]

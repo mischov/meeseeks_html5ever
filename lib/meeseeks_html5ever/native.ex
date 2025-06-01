@@ -16,7 +16,8 @@ defmodule MeeseeksHtml5ever.Native do
         env_config[:build_from_source],
     targets:
       Enum.uniq(["aarch64-unknown-linux-musl" | RustlerPrecompiled.Config.default_targets()]),
-    version: version
+    version: version,
+    nif_versions: ["2.15", "2.16"]
 
   def parse_html(_binary), do: err()
   def parse_xml(_binary), do: err()
