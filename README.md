@@ -1,13 +1,13 @@
 # Meeseeks_Html5ever
 
 [![MeeseeksHtml5ever version](https://img.shields.io/hexpm/v/meeseeks_html5ever.svg)](https://hex.pm/packages/meeseeks_html5ever)
-![tests](https://github.com/mischov/meeseeks_html5ever/workflows/tests/badge.svg)
+[![CI](https://github.com/mischov/meeseeks_html5ever/actions/workflows/ci.yml/badge.svg)](https://github.com/mischov/meeseeks_html5ever/actions/workflows/ci.yml)
 
 Originally a fork of Hansihe's [html5ever_elixir](https://github.com/hansihe/html5ever_elixir) that is more tightly coupled with [Meeseeks](https://github.com/mischov/meeseeks), Meeseeks_Html5ever has grown to include additional functionality, such as use of xml5ever for XML parsing.
 
 ## Compatibility
 
-Meeseeks_Html5ever requires a minimum combination of Elixir 1.12.0 and Erlang/OTP 23.0, and is tested with a maximum combination of Elixir 1.14.0 and Erlang/OTP 25.0.
+Meeseeks_Html5ever is tested with a minimum combination of Elixir 1.16.0 and Erlang/OTP 26.0 and a maximum combination of Elixir 1.18.0 and Erlang/OTP 27.0.
 
 ## Installation
 
@@ -16,7 +16,7 @@ Ensure Rust is installed, then add Meeseeks_Html5ever to your `mix.exs`:
 ```elixir
 def deps do
   [
-    {:meeseeks_html5ever, "~> 0.14.3"}
+    {:meeseeks_html5ever, "~> 0.15.0"}
   ]
 end
 ```
@@ -40,7 +40,7 @@ If you want to force compilation you will need to have the Rust compiler [instal
 ```elixir
 def deps do
   [
-    {:meeseeks_html5ever, "~> 0.14.3"},
+    {:meeseeks_html5ever, "~> 0.15.0"},
     {:rustler, ">= 0.0.0", optional: true}
   ]
 end

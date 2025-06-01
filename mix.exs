@@ -3,7 +3,7 @@ defmodule MeeseeksHtml5ever.Mixfile do
 
   @description "Meeseeks-specific NIF binding of html5ever using Rustler"
   @source_url "https://github.com/mischov/meeseeks_html5ever"
-  @version "0.14.3"
+  @version "0.15.0"
 
   def project do
     [
