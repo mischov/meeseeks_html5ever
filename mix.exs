@@ -9,7 +9,7 @@ defmodule MeeseeksHtml5ever.Mixfile do
     [
       app: :meeseeks_html5ever,
       version: @version,
-      elixir: "~> 1.12",
+      elixir: "~> 1.16",
       deps: deps(),
 
       # Hex
@@ -28,7 +28,7 @@ defmodule MeeseeksHtml5ever.Mixfile do
 
   defp deps do
     [
-      {:rustler_precompiled, "~> 0.6.1"},
+      {:rustler_precompiled, "~> 0.8.2"},
 
       # Optional
       {:rustler, ">= 0.0.0", optional: true},
